@@ -78,8 +78,10 @@ svg .hov:hover { opacity: .8; }
 .peso tr.tot td { font-weight: bold; border-top: 1px solid var(--base); }
 .peso tr.ext td { border-top: 1px solid var(--base); font-weight: bold; font-size: 11px; padding-top: 5px; }
 .peso .cel { display: flex; align-items: center; gap: 6px; }
-.peso .cel span { width: 52px; flex: none; }
-.peso .bar { flex: 1; height: 9px; border: 1px solid var(--grade); min-width: 40px; position: relative; }
+.peso .cel span { width: 46px; flex: none; }
+.peso .bar { flex: 1; height: 9px; border: 1px solid var(--grade); min-width: 22px; position: relative; }
+.peso .tab-peso { overflow-x: auto; min-width: 0; }
+.peso > * { min-width: 0; }
 .peso .bar b { position: absolute; left: 0; top: 0; bottom: 0; }
 .peso .sw { display: inline-block; width: 8px; height: 10px; margin-right: 6px; vertical-align: -1px; }
 .peso .zero { color: var(--muted); }
