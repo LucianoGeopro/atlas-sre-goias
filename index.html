@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atlas SRE Municípios – GOINFRA</title>
+<meta name="description" content="Sistema Rodoviário Estadual – SRE outubro/2026: situação da malha, indicadores, obras da DOR e peso da malha de cada município de Goiás.">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="cab">
+  <div class="cab-ante">SISTEMA RODOVIÁRIO ESTADUAL – SRE<br>OUTUBRO/2026</div>
+  <h1 class="cab-titulo"><span id="titulo">…</span>/GO</h1>
+  <div class="cab-logo"><img src="img/logo.svg" alt="DPL · GOINFRA · SEINFRA · Governo de Goiás"></div>
+</header>
+
+<nav class="busca">
+  <button id="ant" title="Município anterior" aria-label="Município anterior">‹</button>
+  <input id="q" list="lista" placeholder="Buscar município…" autocomplete="off" aria-label="Buscar município">
+  <datalist id="lista"></datalist>
+  <button id="prox" title="Próximo município" aria-label="Próximo município">›</button>
+  <span class="busca-pag" id="pag"></span>
+</nav>
+
+<main class="pagina">
+  <section class="col-esq">
+    <div class="blk b-mapa">
+      <h2 class="sec">SITUAÇÃO ATUAL – RODOVIAS DO SRE NO MUNICÍPIO DE <span class="nome-up"></span></h2>
+      <div id="mapa" class="mapa"></div>
+    </div>
+    <div class="blk b-obras obras">
+      <div class="obras-graf caixa" id="g-dor"></div>
+      <div class="obras-quadro">
+        <h2 class="sec">OBRAS DOR NO MUNICÍPIO DE <span class="nome-up"></span></h2>
+        <div class="tab-rolagem"><table class="tab" id="t-obras"></table></div>
+      </div>
+    </div>
+    <div class="blk b-notas">
+      <h2 class="sec">NOTAS METODOLÓGICAS</h2>
+      <div class="notas" id="notas"></div>
+    </div>
+    <div class="blk b-legenda">
+      <h2 class="sec">LEGENDA</h2>
+      <div class="legenda" id="legenda"></div>
+    </div>
+  </section>
+
+  <section class="col-dir">
+    <div class="blk b-ind">
+      <h2 class="sec">INDICADORES DO SRE – <span class="nome-up"></span>/GO</h2>
+      <div class="cartoes" id="cartoes"></div>
+    </div>
+    <div class="blk b-graf graficos">
+      <div class="caixa" id="g1"></div>
+      <div class="caixa" id="g2"></div>
+      <div class="caixa" id="g3"></div>
+    </div>
+    <div class="blk b-peso caixa" id="g-peso"></div>
+    <div class="blk b-sre">
+      <h2 class="sec sec-filtro"><span>SRE – QUADRO DE TRECHOS NO MUNICÍPIO DE <span class="nome-up"></span></span>
+        <input id="filtro" class="filtro" placeholder="Filtrar trechos…" aria-label="Filtrar trechos"></h2>
+      <div class="tab-rolagem"><table class="tab" id="t-sre"></table></div>
+    </div>
+  </section>
+</main>
+
+<footer class="rodape">
+  SISTEMA DE COORDENADAS GEODÉSICO: DATUM SIRGAS 2000 &nbsp;|&nbsp; Dados Vetoriais: ANA, ANTT, DNIT, FUNAI, GOINFRA, IBGE, INCRA, MMA, MUBDG, SIEG e SGP. &nbsp;|&nbsp; Diretoria de Planejamento - DPL &nbsp;|&nbsp; Gerência da Rede Física - PL - GEREF &nbsp;|&nbsp; Elaboração: Novembro de 2026<br>
+  Telefone: (62) 3265-4149 &nbsp;|&nbsp; E-mail: redefisica.goinfra@goias.gov.br &nbsp;|&nbsp; Site: www.goinfra.go.gov.br &nbsp;|&nbsp; Direitos reservados à GOINFRA.
+</footer>
+
+<div id="dica" class="dica" role="tooltip"></div>
+<div id="carregando" class="carregando">Carregando o atlas…</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
