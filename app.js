@@ -44,7 +44,7 @@ async function carrega() {
     ...nomes.map(n => fetch(`data/${n}.geojson`).then(r => r.json()))]);
   A = atlas; nomes.forEach((n, i) => GEO[n] = geos[i]);
   LISTA = Object.entries(A.municipios).sort((a, b) => a[1].ordem - b[1].ordem).map(([cod]) => cod);
-  $("#lista").innerHTML = LISTA.map(c => `<option value="${esc(A.municipios[c].nome)}">`).join("");
+  autocompleta($("#q"), c => seleciona(c));
   iniciaMapa(); legenda();
   const h = decodeURIComponent(location.hash.slice(1));
   seleciona(A.municipios[h] ? h : LISTA[0], false);
@@ -58,8 +58,6 @@ function procura(txt) {
   return LISTA.find(c => semAcento(A.municipios[c].nome) === t) ||
          LISTA.find(c => semAcento(A.municipios[c].nome).startsWith(t));
 }
-$("#q").addEventListener("change", e => { const c = procura(e.target.value); if (c) { seleciona(c); e.target.blur(); } });
-$("#q").addEventListener("keydown", e => { if (e.key === "Enter") { const c = procura(e.target.value); if (c) { seleciona(c); e.target.blur(); } } });
 $("#ant").onclick = () => seleciona(LISTA[(LISTA.indexOf(atual) - 1 + LISTA.length) % LISTA.length]);
 $("#prox").onclick = () => seleciona(LISTA[(LISTA.indexOf(atual) + 1) % LISTA.length]);
 window.addEventListener("hashchange", () => { const c = location.hash.slice(1); if (A.municipios[c] && c !== atual) seleciona(c, false); });
@@ -71,10 +69,12 @@ function estiloSRE(f) {
   return { color: cor, weight: s === "DUP" || s === "EOD" ? 5 : 3, dashArray: s === "EOP" ? "8 5" : null, opacity: 1 };
 }
 function iniciaMapa() {
-  mapa = L.map("mapa", { preferCanvas: true, zoomSnap: 0.25, attributionControl: true });
-  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+  mapa = L.map("mapa", { preferCanvas: true, zoomSnap: 0.25, attributionControl: true, zoomControl: false });
+  const satelite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
     maxZoom: 18, attribution: "Imagem: Esri, Maxar, Earthstar Geographics", className: "satelite"
   }).addTo(mapa);
+  mapa.createPane("rotulos").style.zIndex = 620;
+  mapa.getPane("rotulos").style.pointerEvents = "none";
   const st = document.createElement("style"); st.textContent = ".satelite{filter:saturate(.6) brightness(1.02)}";
   document.head.appendChild(st);
   mapa.createPane("mascara").style.zIndex = 390;
@@ -117,11 +117,28 @@ function iniciaMapa() {
 
   camadas.perimetro.addTo(mapa); camadas.municipios.addTo(mapa); camadas.snv.addTo(mapa); camadas.sre.addTo(mapa);
   camadas.dorL.addTo(mapa); camadas.dorP.addTo(mapa); camadas.loc.addTo(mapa);
-  L.control.layers(null, {
-    "SRE – outubro/2026": camadas.sre, "Obras DOR – lineares": camadas.dorL, "Obras DOR – pontuais": camadas.dorP,
-    "SNV – rodovias federais": camadas.snv, "Localidades": camadas.loc, "Perímetro urbano": camadas.perimetro,
-    "Limites municipais": camadas.municipios, "Lotes de manutenção": camadas.lotes
-  }, { collapsed: true }).addTo(mapa);
+  camadas.satelite = satelite;
+  camadas.rotVias = L.layerGroup().addTo(mapa);      // GO-xxx / BR-xxx
+  camadas.rotMun = L.layerGroup().addTo(mapa);       // nomes dos municípios
+  camadas.rotLotes = L.layerGroup();                 // números dos lotes
+  camadas.grade = L.layerGroup().addTo(mapa);        // grade de coordenadas
+  GEO.lotes.features.forEach(f => camadas.rotLotes.addLayer(L.marker(centro(f.geometry), { interactive: false, pane: "rotulos",
+    icon: L.divIcon({ className: "rot-lote", html: "Lote " + esc(f.properties.lote), iconSize: null }) })));
+  GEO.municipios.features.forEach(f => {
+    const mk = L.marker(centro(f.geometry), { interactive: false, pane: "rotulos",
+      icon: L.divIcon({ className: "rot-mun", html: esc(f.properties.nome), iconSize: null }) });
+    mk._cod = f.properties.cod; camadas.rotMun.addLayer(mk);
+  });
+  buscaNoMapa();
+  L.control.zoom({ position: "topleft", zoomInTitle: "Aproximar", zoomOutTitle: "Afastar" }).addTo(mapa);
+  const Norte = L.Control.extend({ options: { position: "topright" },
+    onAdd() { const d = L.DomUtil.create("div", "norte"); d.title = "Norte";
+      d.innerHTML = `<svg viewBox="0 0 40 56" width="34" height="48"><polygon points="20,4 30,40 20,33 10,40" fill="#222"/>
+        <polygon points="20,4 20,33 10,40" fill="#fff" stroke="#222" stroke-width="1.2"/>
+        <text x="20" y="54" text-anchor="middle" font-size="13" font-weight="bold" font-family="Arial" fill="#222">N</text></svg>`;
+      return d; } });
+  new Norte().addTo(mapa);
+  painelCamadas();
   L.control.scale({ metric: true, imperial: false }).addTo(mapa);
   const EscNum = L.Control.extend({ options: { position: "topleft" },
     onAdd() { this._d = L.DomUtil.create("div", "escala-num"); return this._d; } });
@@ -135,10 +152,140 @@ function iniciaMapa() {
     onAdd() { const b = L.DomUtil.create("button", "btn-mapa"); b.textContent = "⤢ Município"; b.title = "Voltar ao município";
       L.DomEvent.on(b, "click", e => { L.DomEvent.stop(e); enquadra(); }); return b; } });
   new Volta().addTo(mapa);
-  // localidades: rótulos só com zoom de detalhe
-  const rotulos = () => { const z = mapa.getZoom(); camadas.loc.eachLayer(l => { const t = l.getTooltip(); if (t && t.options.permanent) z >= 9 ? l.openTooltip() : l.closeTooltip(); }); };
-  mapa.on("zoomend", rotulos);
-  mapa.whenReady(rotulos);
+  mapa.on("zoomend moveend", atualizaRotulos);
+}
+
+/* ---------- rótulos, grade, painel de camadas e busca no mapa ---------- */
+const ROT = { vias: true, mun: true, loc: true, lotes: false };
+function centro(g) {                       // centro do maior anel (média ponderada pela área)
+  const polys = g.type === "Polygon" ? [g.coordinates] : g.coordinates;
+  let best = null, ba = -1;
+  polys.forEach(p => { const r = p[0]; let a = 0, cx = 0, cy = 0;
+    for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const k = r[j][0] * r[i][1] - r[i][0] * r[j][1]; a += k; cx += (r[j][0] + r[i][0]) * k; cy += (r[j][1] + r[i][1]) * k; }
+    if (Math.abs(a) > ba) { ba = Math.abs(a); best = a ? [cy / (3 * a), cx / (3 * a)] : [r[0][1], r[0][0]]; } });
+  return best;
+}
+function dentro(pt, g) {                   // ponto [lon, lat] dentro do polígono (raio)
+  const polys = g.type === "Polygon" ? [g.coordinates] : g.coordinates;
+  return polys.some(p => { let d = false; const r = p[0];
+    for (let i = 0, j = r.length - 1; i < r.length; j = i++)
+      if ((r[i][1] > pt[1]) !== (r[j][1] > pt[1]) && pt[0] < (r[j][0] - r[i][0]) * (pt[1] - r[i][1]) / (r[j][1] - r[i][1]) + r[i][0]) d = !d;
+    return d; });
+}
+function linhas(g) { return g.type === "LineString" ? [g.coordinates] : g.type === "MultiLineString" ? g.coordinates : []; }
+function meio(g) {                         // ponto no meio da linha mais longa + comprimento
+  let best = null, bl = -1;
+  linhas(g).forEach(c => { let l = 0; for (let i = 1; i < c.length; i++) l += Math.hypot(c[i][0] - c[i - 1][0], c[i][1] - c[i - 1][1]);
+    if (l > bl) { bl = l; let h = l / 2, k = 1; for (; k < c.length; k++) { const s = Math.hypot(c[k][0] - c[k - 1][0], c[k][1] - c[k - 1][1]); if (h <= s) break; h -= s; }
+      const a = c[k - 1] || c[0], b = c[k] || a, s = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; best = [a[0] + (b[0] - a[0]) * h / s, a[1] + (b[1] - a[1]) * h / s]; } });
+  return [best, bl];
+}
+// rótulos das rodovias do município selecionado: um por rodovia (GO e BR), no trecho mais longo dentro do município
+function montaRotulosVias(cod) {
+  camadas.rotVias.clearLayers();
+  const gm = GEO.municipios.features.find(f => f.properties.cod === cod).geometry, b = A.municipios[cod].bbox;
+  const melhor = {};
+  const avalia = (chave, g, tipo) => { const [p, l] = meio(g); if (!p || p[0] < b[0] || p[0] > b[2] || p[1] < b[1] || p[1] > b[3] || !dentro(p, gm)) return;
+    if (!melhor[chave] || melhor[chave].l < l) melhor[chave] = { p, l, tipo }; };
+  GEO.sre.features.forEach(f => f.properties.go && avalia("GO-" + f.properties.go, f.geometry, "go"));
+  GEO.snv_federal.features.forEach(f => f.properties.br && avalia("BR-" + String(f.properties.br).padStart(3, "0"), f.geometry, "br"));
+  Object.entries(melhor).forEach(([t, v]) => camadas.rotVias.addLayer(L.marker([v.p[1], v.p[0]], { interactive: false, pane: "rotulos",
+    icon: L.divIcon({ className: "rot-via rot-" + v.tipo, html: esc(t), iconSize: null }) })));
+}
+function atualizaRotulos() {
+  if (!mapa) return;
+  const z = mapa.getZoom();
+  // localidades: sedes a partir do zoom 9, demais a partir do 11
+  camadas.loc.eachLayer(l => { const t = l.getTooltip(); if (!t) return;
+    const sede = /Sede|Capital/.test(l.feature.properties.t);
+    (ROT.loc && mapa.hasLayer(camadas.loc) && z >= (sede ? 9 : 11)) ? (t.options.permanent = true, l.openTooltip()) : l.closeTooltip(); });
+  ROT.vias ? mapa.addLayer(camadas.rotVias) : mapa.removeLayer(camadas.rotVias);
+  ROT.lotes ? mapa.addLayer(camadas.rotLotes) : mapa.removeLayer(camadas.rotLotes);
+  if (ROT.mun && z >= 8) { mapa.addLayer(camadas.rotMun);
+    camadas.rotMun.eachLayer(m => { const el = m.getElement(); if (el) el.classList.toggle("atual", m._cod === atual); });
+  } else mapa.removeLayer(camadas.rotMun);
+  if (mapa.hasLayer(camadas.grade)) desenhaGrade();
+}
+// grade de coordenadas (graus e minutos), com rótulos nas bordas do mapa
+function gms(v, eixo) {
+  const h = eixo === "lat" ? (v < 0 ? "S" : "N") : (v < 0 ? "W" : "E"), a = Math.abs(v);
+  let g = Math.floor(a + 1e-9), m = Math.round((a - g) * 60); if (m === 60) { g++; m = 0; }
+  return `${g}°${m ? String(m).padStart(2, "0") + "'" : ""}${h}`;
+}
+function desenhaGrade() {
+  camadas.grade.clearLayers();
+  const b = mapa.getBounds(), span = Math.max(b.getEast() - b.getWest(), b.getNorth() - b.getSouth());
+  const passo = [10, 5, 2, 1, 0.5, 1 / 3, 0.25, 1 / 6, 1 / 12, 1 / 20, 1 / 30, 1 / 60].find(p => span / p >= 3) || 1 / 60;
+  const est = { color: "#ffffff", weight: 0.8, opacity: 0.75, dashArray: "4 4", interactive: false, pane: "rotulos" };
+  const n0 = Math.ceil(b.getSouth() / passo) * passo, e0 = Math.ceil(b.getWest() / passo) * passo;
+  for (let y = n0; y <= b.getNorth(); y += passo) {
+    camadas.grade.addLayer(L.polyline([[y, b.getWest() - 1], [y, b.getEast() + 1]], est));
+    camadas.grade.addLayer(L.marker([y, b.getWest()], { interactive: false, pane: "rotulos",
+      icon: L.divIcon({ className: "rot-grade rot-grade-y", html: gms(y, "lat"), iconSize: null }) }));
+  }
+  for (let x = e0; x <= b.getEast(); x += passo) {
+    camadas.grade.addLayer(L.polyline([[b.getSouth() - 1, x], [b.getNorth() + 1, x]], est));
+    camadas.grade.addLayer(L.marker([b.getSouth(), x], { interactive: false, pane: "rotulos",
+      icon: L.divIcon({ className: "rot-grade rot-grade-x", html: gms(x, "lon"), iconSize: null }) }));
+  }
+}
+function painelCamadas() {
+  const itens = [["Camadas"],
+    ["sre", "SRE – outubro/2026"], ["dorL", "Obras DOR – lineares"], ["dorP", "Obras DOR – pontuais"],
+    ["snv", "SNV – rodovias federais"], ["loc", "Localidades"], ["perimetro", "Perímetro urbano"],
+    ["municipios", "Limites municipais"], ["lotes", "Lotes de manutenção"], ["grade", "Grade de coordenadas"],
+    ["satelite", "Imagem de satélite"],
+    ["Rótulos"], ["r:vias", "Rodovias (GO / BR)"], ["r:mun", "Municípios"], ["r:loc", "Localidades"], ["r:lotes", "Lotes"]];
+  const P = L.Control.extend({ options: { position: "topright" },
+    onAdd() {
+      const d = L.DomUtil.create("div", "painel");
+      d.innerHTML = `<button class="painel-btn" type="button" aria-expanded="true">☰ Camadas e rótulos</button><div class="painel-corpo">` +
+        itens.map(([k, t]) => t === undefined ? `<div class="painel-tit">${k}</div>` :
+          `<label><input type="checkbox" data-k="${k}" ${k.startsWith("r:") ? (ROT[k.slice(2)] ? "checked" : "") : (mapa.hasLayer(camadas[k]) ? "checked" : "")}> ${t}</label>`).join("") + `</div>`;
+      L.DomEvent.disableClickPropagation(d); L.DomEvent.disableScrollPropagation(d);
+      const btn = d.querySelector(".painel-btn");
+      d.classList.add("fechado"); btn.setAttribute("aria-expanded", "false");   // começa fechado; abre ao clicar
+      btn.onclick = () => { const f = d.classList.toggle("fechado"); btn.setAttribute("aria-expanded", String(!f)); };
+      d.querySelectorAll("input").forEach(cb => cb.onchange = () => {
+        const k = cb.dataset.k;
+        if (k.startsWith("r:")) ROT[k.slice(2)] = cb.checked;
+        else cb.checked ? mapa.addLayer(camadas[k]) : mapa.removeLayer(camadas[k]);
+        if (k === "grade" && cb.checked) desenhaGrade();
+        atualizaRotulos();
+      });
+      return d;
+    } });
+  new P().addTo(mapa);
+}
+function autocompleta(input, aoEscolher) {        // lista de sugestões própria (funciona igual no celular)
+  const lista = document.createElement("ul"); lista.className = "sugestoes"; input.parentNode.appendChild(lista);
+  let sel = -1, itens = [];
+  const fecha = () => { lista.innerHTML = ""; lista.style.display = "none"; sel = -1; };
+  const marca = () => lista.querySelectorAll("li").forEach((li, i) => li.classList.toggle("ativo", i === sel));
+  input.addEventListener("input", () => {
+    const t = semAcento(input.value); if (!t) return fecha();
+    itens = LISTA.filter(c => semAcento(A.municipios[c].nome).includes(t))
+      .sort((a, b) => semAcento(A.municipios[b].nome).startsWith(t) - semAcento(A.municipios[a].nome).startsWith(t)).slice(0, 12);
+    lista.innerHTML = itens.length ? itens.map(c => `<li data-c="${c}">${esc(A.municipios[c].nome)}</li>`).join("") : `<li class="nada">Nenhum município encontrado</li>`;
+    lista.style.display = "block"; sel = itens.length ? 0 : -1; marca();
+  });
+  input.addEventListener("keydown", e => {
+    if (e.key === "ArrowDown") { sel = Math.min(itens.length - 1, sel + 1); marca(); e.preventDefault(); }
+    else if (e.key === "ArrowUp") { sel = Math.max(0, sel - 1); marca(); e.preventDefault(); }
+    else if (e.key === "Enter") { const c = itens[sel] || procura(input.value); if (c) { aoEscolher(c); input.value = ""; fecha(); input.blur(); } }
+    else if (e.key === "Escape") fecha();
+  });
+  lista.addEventListener("mousedown", e => { const li = e.target.closest("li[data-c]"); if (li) { e.preventDefault(); aoEscolher(li.dataset.c); input.value = ""; fecha(); input.blur(); } });
+  input.addEventListener("blur", () => setTimeout(fecha, 150));
+}
+function buscaNoMapa() {
+  const B = L.Control.extend({ options: { position: "topleft" },
+    onAdd() { const d = L.DomUtil.create("div", "busca-mapa");
+      d.innerHTML = `<input type="search" placeholder="🔍 Buscar município…" aria-label="Buscar município no mapa" autocomplete="off">`;
+      L.DomEvent.disableClickPropagation(d); L.DomEvent.disableScrollPropagation(d);
+      setTimeout(() => autocompleta(d.querySelector("input"), c => seleciona(c)), 0);
+      return d; } });
+  new B().addTo(mapa);
 }
 function enquadra() {
   const b = A.municipios[atual].bbox;
@@ -179,7 +326,7 @@ function seleciona(cod, hist = true) {
   $("#q").value = ""; $("#q").placeholder = m.nome + " — buscar outro município…";
   $("#pag").textContent = `Página ${m.ordem} de ${LISTA.length}`;
   if (camadas.sel) { mapa.removeLayer(camadas.sel); camadas.sel = null; }
-  destacaMunicipio(cod); enquadra();
+  destacaMunicipio(cod); montaRotulosVias(cod); enquadra(); atualizaRotulos();
   cartoes(m); grafSituacao(m); grafRodovia(m); grafUrbano(m); grafPeso(cod, m); grafDor(m);
   tabelaObras(m); tabelaSRE(m);
   $("#notas").textContent = (m.notas || "").replace(/\\n/g, "\n") +
