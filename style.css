@@ -17,6 +17,46 @@ body { font-size: 13px; }
 /* busca */
 .busca { position: sticky; top: 0; z-index: 1000; display: flex; gap: 8px; align-items: center; padding: 8px 24px;
          background: #fff; border-bottom: 1px solid #dcdcd5; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.busca-campo { position: relative; flex: 0 1 420px; min-width: 0; display: flex; }
+.busca-campo input { flex: 1 1 auto !important; width: 100%; }
+.sugestoes { display: none; position: absolute; z-index: 2500; left: 0; right: 0; top: 100%; margin: 2px 0 0; padding: 4px 0;
+             list-style: none; background: #fff; border: 1px solid var(--grade); border-radius: 4px; box-shadow: 0 4px 14px rgba(0,0,0,.18);
+             max-height: 320px; overflow-y: auto; font-size: 14px; text-align: left; }
+.sugestoes li { padding: 7px 12px; cursor: pointer; color: var(--ink); }
+.sugestoes li.ativo, .sugestoes li:hover { background: var(--cartao); color: var(--brand); }
+.sugestoes li.nada { color: var(--muted); cursor: default; font-style: italic; }
+
+/* controles do mapa */
+.busca-mapa { position: relative; width: 240px; }
+.busca-mapa input { width: 100%; font: inherit; font-size: 13px; padding: 7px 10px; border: 2px solid rgba(0,0,0,.25);
+                    border-radius: 4px; background: #fff; }
+.busca-mapa input:focus { outline: 2px solid var(--verde); }
+.norte { background: rgba(255,255,255,.92); border: 1px solid #999; border-radius: 3px; padding: 2px 4px 0; line-height: 0; }
+.painel { background: #fff; border: 2px solid rgba(0,0,0,.25); border-radius: 4px; font-size: 12.5px; min-width: 200px; }
+.painel-btn { width: 100%; text-align: left; font: inherit; font-weight: bold; color: var(--brand); background: #fff; border: 0;
+              padding: 7px 10px; cursor: pointer; border-radius: 4px; }
+.painel-corpo { padding: 0 10px 8px; max-height: 46vh; overflow-y: auto; }
+.painel.fechado .painel-corpo { display: none; }
+.painel-tit { font-weight: bold; color: var(--ink2); margin: 6px 0 2px; padding-top: 4px; border-top: 1px solid #e3e3dc; font-size: 11.5px; }
+.painel label { display: flex; align-items: center; gap: 6px; padding: 2px 0; cursor: pointer; white-space: nowrap; }
+.painel input { margin: 0; accent-color: var(--verde); }
+
+/* rótulos do mapa */
+.rot-via, .rot-mun, .rot-lote, .rot-grade { background: transparent; border: 0; white-space: nowrap; }
+.rot-via { transform: translate(-50%, -50%); font: bold 11px Arial, sans-serif; padding: 1px 5px; border-radius: 3px; border: 1.5px solid;
+           box-shadow: 0 1px 2px rgba(0,0,0,.35); }
+.rot-go { background: #fff; color: #b3141a; border-color: #b3141a; }
+.rot-br { background: #fff; color: #23741e; border-color: #23741e; }
+.rot-mun { transform: translate(-50%, -50%); font: bold 11px Arial, sans-serif; color: #4a4a44; letter-spacing: .3px;
+           text-shadow: 0 0 2px #fff, 0 0 3px #fff, 0 0 4px #fff; text-transform: uppercase; }
+.rot-mun.atual { display: none; }
+.rot-lote { transform: translate(-50%, -50%); font: bold 14px Arial, sans-serif; color: var(--t-lt);
+            text-shadow: 0 0 2px #fff, 0 0 3px #fff, 0 0 5px #fff; }
+.rot-grade { font: 10px Arial, sans-serif; color: #fff; background: rgba(0,0,0,.45); padding: 0 3px; border-radius: 2px; }
+.rot-grade-y { transform: translate(2px, -50%); }
+.rot-grade-x { transform: translate(-50%, -100%) translateY(-2px); }
+@media (max-width: 760px) { .busca-mapa { width: 170px; } .painel { min-width: 0; } }
+
 .busca input { flex: 0 1 420px; min-width: 0; font: inherit; font-size: 15px; padding: 8px 12px; border: 1px solid var(--grade);
                border-radius: 4px; }
 .busca input:focus { outline: 2px solid var(--verde); border-color: transparent; }
