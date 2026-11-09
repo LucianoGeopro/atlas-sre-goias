@@ -30,6 +30,8 @@ body { font-size: 13px; }
           max-width: 1800px; margin: 0 auto; background: #fff; }
 .sec { color: var(--brand); font-size: 13px; font-weight: bold; margin: 14px 0 6px; padding-bottom: 3px;
        border-bottom: 1.5px solid var(--brand); }
+.col-esq, .col-dir { min-width: 0; }
+body { overflow-x: hidden; }
 .sec-filtro { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .blk { margin-bottom: 10px; min-width: 0; }
 .blk > .sec:first-child { margin-top: 4px; }
