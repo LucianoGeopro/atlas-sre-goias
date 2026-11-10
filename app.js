@@ -37,6 +37,18 @@ document.addEventListener("click", ev => {
   if (t) mostraDica(ev, t.dataset.tip); else dica.style.display = "none";
 });
 
+/* ---------------- tema claro / escuro ---------------- */
+const escuro = () => document.documentElement.dataset.tema === "escuro";
+const estiloMascara = () => escuro() ? { fillColor: "#16181a", fillOpacity: 0.8 } : { fillColor: "#eeeeea", fillOpacity: 0.82 };
+function aplicaTema(esc_) {
+  if (esc_) document.documentElement.dataset.tema = "escuro"; else delete document.documentElement.dataset.tema;
+  $("#tema").textContent = esc_ ? "☀ Tema claro" : "🌙 Tema escuro";
+  try { localStorage.setItem("atlas-tema", esc_ ? "escuro" : "claro"); } catch (e) {}
+  if (camadas.mascara) camadas.mascara.setStyle(estiloMascara());
+}
+$("#tema").onclick = () => aplicaTema(!escuro());
+aplicaTema(escuro());
+
 /* ---------------- carga ---------------- */
 async function carrega() {
   const nomes = ["municipios", "sre", "dor_linhas", "dor_pontos", "perimetro_urbano", "localidades", "snv_federal", "lotes"];
@@ -284,7 +296,7 @@ function destacaMunicipio(cod) {
   polys.forEach(p => aneis.push(p[0].map(([x, y]) => [y, x])));
   // fora do município: fundo claro (como o recorte do atlas); dentro: satélite
   camadas.mascara = L.polygon([[[-90, -180], [-90, 180], [90, 180], [90, -180]], ...aneis], {
-    pane: "mascara", stroke: false, fillColor: "#eeeeea", fillOpacity: 0.82, interactive: false }).addTo(mapa);
+    pane: "mascara", stroke: false, ...estiloMascara(), interactive: false }).addTo(mapa);
   camadas.contorno = L.geoJSON(f, { pane: "vias", style: { color: "#ffd400", weight: 4, fill: false }, interactive: false }).addTo(mapa);
 }
 function destacaTrecho(sre) {
