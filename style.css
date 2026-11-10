@@ -170,8 +170,13 @@ svg .hov:hover { opacity: .8; }
 .carregando { position: fixed; inset: 0; z-index: 4000; background: #fff; display: flex; align-items: center; justify-content: center;
               color: var(--brand); font-size: 18px; font-weight: bold; }
 
-/* botão do tema */
+/* seletor do mês e botão do tema */
+.mes-sel { margin-left: auto; font: inherit; font-size: 13px; font-weight: bold; color: var(--brand); height: 38px;
+           padding: 0 8px; border: 1px solid var(--grade); border-radius: 4px; background: #fff; cursor: pointer; }
+.mes-sel[hidden] { display: none; }
+.mes-sel:not([hidden]) + .tema-btn { margin-left: 0; }
 .busca .tema-btn { margin-left: auto; width: auto; font-size: 13px; padding: 0 12px; white-space: nowrap; }
+[data-tema=escuro] .mes-sel { background: var(--sup2); border-color: var(--borda); }
 
 /* ---------------- tema escuro ---------------- */
 [data-tema=escuro] {
