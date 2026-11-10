@@ -6,7 +6,7 @@
 <title>Atlas SRE Municípios – GOINFRA</title>
 <meta name="description" content="Sistema Rodoviário Estadual – SRE outubro/2026: situação da malha, indicadores, obras da DOR e peso da malha de cada município de Goiás.">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 <header class="cab">
@@ -27,6 +27,7 @@
     <div class="blk b-mapa">
       <h2 class="sec">SITUAÇÃO ATUAL – RODOVIAS DO SRE NO MUNICÍPIO DE <span class="nome-up"></span></h2>
       <div id="mapa" class="mapa"></div>
+      <div id="camadas" class="camadas" aria-label="Camadas e rótulos do mapa"></div>
     </div>
     <div class="blk b-obras obras">
       <div class="obras-graf caixa" id="g-dor"></div>
@@ -73,6 +74,6 @@
 <div id="carregando" class="carregando">Carregando o atlas…</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>
