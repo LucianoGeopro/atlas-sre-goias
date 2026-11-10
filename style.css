@@ -170,6 +170,56 @@ svg .hov:hover { opacity: .8; }
 .carregando { position: fixed; inset: 0; z-index: 4000; background: #fff; display: flex; align-items: center; justify-content: center;
               color: var(--brand); font-size: 18px; font-weight: bold; }
 
+/* botão do tema */
+.busca .tema-btn { margin-left: auto; width: auto; font-size: 13px; padding: 0 12px; white-space: nowrap; }
+
+/* ---------------- tema escuro ---------------- */
+[data-tema=escuro] {
+  --brand: #6cc59a; --cartao: #1f2d27; --ink: #e4e4df; --ink2: #b7b6b0; --muted: #8b8a85;
+  --grade: #44484b; --base: #6a6d70; --t-mu: #bf93e0; --t-lt: #45c9aa; --t-go: #80aeea;
+  --fundo: #121416; --sup: #1c1f21; --sup2: #24282a; --borda: #363a3d;
+  color-scheme: dark;
+}
+html[data-tema=escuro], [data-tema=escuro] body { background: var(--fundo); color: var(--ink); }
+[data-tema=escuro] .cab { background: #0a6b34; }
+[data-tema=escuro] .busca { background: var(--sup); border-bottom-color: var(--borda); box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+[data-tema=escuro] .busca input, [data-tema=escuro] .busca button, [data-tema=escuro] .filtro {
+  background: var(--sup2); color: var(--ink); border-color: var(--borda); }
+[data-tema=escuro] .busca button { color: var(--brand); }
+[data-tema=escuro] .busca button:hover { background: var(--cartao); }
+[data-tema=escuro] .sugestoes { background: var(--sup2); border-color: var(--borda); }
+[data-tema=escuro] .sugestoes li { color: var(--ink); }
+[data-tema=escuro] .pagina, [data-tema=escuro] .rodape { background: var(--sup); }
+[data-tema=escuro] .caixa { background: var(--sup2); border-color: var(--borda); }
+[data-tema=escuro] .camadas { background: var(--sup2); border-color: var(--borda); }
+[data-tema=escuro] .camadas-grp + .camadas-grp { border-top-color: var(--borda); }
+[data-tema=escuro] .mapa { border-color: var(--borda); background: #1a1d1f; }
+[data-tema=escuro] .rot-mun { color: #e8e8e2; text-shadow: 0 0 2px #000, 0 0 3px #000, 0 0 4px #000; }
+[data-tema=escuro] .rot-lote { text-shadow: 0 0 2px #000, 0 0 3px #000, 0 0 5px #000; }
+[data-tema=escuro] .tab-rolagem { border-color: var(--borda); }
+[data-tema=escuro] .tab th { background: #1f5b46; }
+[data-tema=escuro] .tab td { border-bottom-color: #2e3234; }
+[data-tema=escuro] .tab tbody tr:nth-child(even) { background: #212527; }
+[data-tema=escuro] .tab tbody tr:hover { background: #3b3720; }
+[data-tema=escuro] .tab tbody tr.sel { background: #5c4c12; }
+[data-tema=escuro] .carregando { background: var(--fundo); }
+[data-tema=escuro] .g-sub { color: var(--ink2); }
+[data-tema=escuro] .escala-num, [data-tema=escuro] .btn-mapa { color: #222; }
+/* gráficos SVG: textos, grades e separadores */
+[data-tema=escuro] svg text[fill="#52514e"] { fill: var(--ink2); }
+[data-tema=escuro] svg text[fill="#0b0b0b"]:not([pointer-events]) { fill: var(--ink); }
+[data-tema=escuro] svg text[fill="#898781"] { fill: var(--muted); }
+[data-tema=escuro] svg line[stroke="#c4c3bb"] { stroke: #3a3e41; }
+[data-tema=escuro] svg line[stroke="#8f8e86"] { stroke: #6a6d70; }
+[data-tema=escuro] svg.graf rect[stroke="#fff"] { stroke: var(--sup2); }
+[data-tema=escuro] svg text[fill="#138a72"] { fill: var(--t-lt); stroke: var(--sup2); }
+/* cores de município / lote / Goiás no comparativo */
+[data-tema=escuro] [style*="color:#7b3fa0"] { color: var(--t-mu) !important; }
+[data-tema=escuro] [style*="color:#138a72"] { color: var(--t-lt) !important; }
+[data-tema=escuro] [style*="color:#2f6db5"] { color: var(--t-go) !important; }
+[data-tema=escuro] [style*="color:#898781"] { color: var(--muted) !important; }
+[data-tema=escuro] .peso .bar { border-color: var(--borda); }
+
 /* telas médias */
 @media (max-width: 1250px) {
   /* uma coluna: mapa, indicadores, gráficos, comparativo, trechos, obras, notas, legenda */
