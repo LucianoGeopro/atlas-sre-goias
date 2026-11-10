@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Atlas SRE Municípios – GOINFRA</title>
-<meta name="description" content="Sistema Rodoviário Estadual – SRE outubro/2026: situação da malha, indicadores, obras da DOR e peso da malha de cada município de Goiás.">
+<meta name="description" content="Sistema Rodoviário Estadual – SRE, atualizado mensalmente: situação da malha, indicadores, obras da DOR e peso da malha de cada município de Goiás.">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 <script>try { if (/tema=escuro/.test(location.search) || localStorage.getItem("atlas-tema") === "escuro") document.documentElement.dataset.tema = "escuro"; } catch (e) { if (/tema=escuro/.test(location.search)) document.documentElement.dataset.tema = "escuro"; }</script>
 </head>
 <body>
 <header class="cab">
-  <div class="cab-ante">SISTEMA RODOVIÁRIO ESTADUAL – SRE<br>OUTUBRO/2026</div>
+  <div class="cab-ante">SISTEMA RODOVIÁRIO ESTADUAL – SRE<br><span class="mes-up"></span></div>
   <h1 class="cab-titulo"><span id="titulo">…</span>/GO</h1>
   <div class="cab-logo"><img src="img/logo.svg" alt="DPL · GOINFRA · SEINFRA · Governo de Goiás"></div>
 </header>
@@ -21,6 +21,7 @@
   <div class="busca-campo"><input id="q" type="search" placeholder="🔍 Buscar município…" autocomplete="off" aria-label="Buscar município"></div>
   <button id="prox" title="Próximo município" aria-label="Próximo município">›</button>
   <span class="busca-pag" id="pag"></span>
+  <select id="mes" class="mes-sel" aria-label="Mês da base do SRE" title="Mês da base do SRE" hidden></select>
   <button id="tema" class="tema-btn" type="button" title="Alternar tema claro/escuro">🌙 Tema escuro</button>
 </nav>
 
@@ -68,7 +69,7 @@
 </main>
 
 <footer class="rodape">
-  SISTEMA DE COORDENADAS GEODÉSICO: DATUM SIRGAS 2000 &nbsp;|&nbsp; Dados Vetoriais: ANA, ANTT, DNIT, FUNAI, GOINFRA, IBGE, INCRA, MMA, MUBDG, SIEG e SGP. &nbsp;|&nbsp; Diretoria de Planejamento - DPL &nbsp;|&nbsp; Gerência da Rede Física - PL - GEREF &nbsp;|&nbsp; Elaboração: Novembro de 2026<br>
+  SISTEMA DE COORDENADAS GEODÉSICO: DATUM SIRGAS 2000 &nbsp;|&nbsp; Dados Vetoriais: ANA, ANTT, DNIT, FUNAI, GOINFRA, IBGE, INCRA, MMA, MUBDG, SIEG e SGP. &nbsp;|&nbsp; Diretoria de Planejamento - DPL &nbsp;|&nbsp; Gerência da Rede Física - PL - GEREF &nbsp;|&nbsp; Elaboração: <span id="elab">Novembro de 2026</span><br>
   Telefone: (62) 3265-4149 &nbsp;|&nbsp; E-mail: redefisica.goinfra@goias.gov.br &nbsp;|&nbsp; Site: www.goinfra.go.gov.br &nbsp;|&nbsp; Direitos reservados à GOINFRA.
 </footer>
 
@@ -76,6 +77,6 @@
 <div id="carregando" class="carregando">Carregando o atlas…</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="app.js?v=6"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>
