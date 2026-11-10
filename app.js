@@ -129,7 +129,6 @@ function iniciaMapa() {
       icon: L.divIcon({ className: "rot-mun", html: esc(f.properties.nome), iconSize: null }) });
     mk._cod = f.properties.cod; camadas.rotMun.addLayer(mk);
   });
-  buscaNoMapa();
   L.control.zoom({ position: "topleft", zoomInTitle: "Aproximar", zoomOutTitle: "Afastar" }).addTo(mapa);
   const Norte = L.Control.extend({ options: { position: "topright" },
     onAdd() { const d = L.DomUtil.create("div", "norte"); d.title = "Norte";
@@ -236,26 +235,19 @@ function painelCamadas() {
     ["municipios", "Limites municipais"], ["lotes", "Lotes de manutenção"], ["grade", "Grade de coordenadas"],
     ["satelite", "Imagem de satélite"],
     ["Rótulos"], ["r:vias", "Rodovias (GO / BR)"], ["r:mun", "Municípios"], ["r:loc", "Localidades"], ["r:lotes", "Lotes"]];
-  const P = L.Control.extend({ options: { position: "topright" },
-    onAdd() {
-      const d = L.DomUtil.create("div", "painel");
-      d.innerHTML = `<button class="painel-btn" type="button" aria-expanded="true">☰ Camadas e rótulos</button><div class="painel-corpo">` +
-        itens.map(([k, t]) => t === undefined ? `<div class="painel-tit">${k}</div>` :
-          `<label><input type="checkbox" data-k="${k}" ${k.startsWith("r:") ? (ROT[k.slice(2)] ? "checked" : "") : (mapa.hasLayer(camadas[k]) ? "checked" : "")}> ${t}</label>`).join("") + `</div>`;
-      L.DomEvent.disableClickPropagation(d); L.DomEvent.disableScrollPropagation(d);
-      const btn = d.querySelector(".painel-btn");
-      d.classList.add("fechado"); btn.setAttribute("aria-expanded", "false");   // começa fechado; abre ao clicar
-      btn.onclick = () => { const f = d.classList.toggle("fechado"); btn.setAttribute("aria-expanded", String(!f)); };
-      d.querySelectorAll("input").forEach(cb => cb.onchange = () => {
-        const k = cb.dataset.k;
-        if (k.startsWith("r:")) ROT[k.slice(2)] = cb.checked;
-        else cb.checked ? mapa.addLayer(camadas[k]) : mapa.removeLayer(camadas[k]);
-        if (k === "grade" && cb.checked) desenhaGrade();
-        atualizaRotulos();
-      });
-      return d;
-    } });
-  new P().addTo(mapa);
+  // painel fora do mapa (logo abaixo dele): no mapa ficam só os elementos da visualização
+  const d = document.getElementById("camadas"), grupos = [];
+  itens.forEach(([k, t]) => t === undefined ? grupos.push({ tit: k, l: [] }) : grupos[grupos.length - 1].l.push([k, t]));
+  d.innerHTML = grupos.map(g => `<div class="camadas-grp"><span class="camadas-tit">${g.tit}:</span>` +
+    g.l.map(([k, t]) => `<label><input type="checkbox" data-k="${k}" ${k.startsWith("r:") ? (ROT[k.slice(2)] ? "checked" : "") : (mapa.hasLayer(camadas[k]) ? "checked" : "")}> ${t}</label>`).join("") +
+    `</div>`).join("");
+  d.querySelectorAll("input").forEach(cb => cb.onchange = () => {
+    const k = cb.dataset.k;
+    if (k.startsWith("r:")) ROT[k.slice(2)] = cb.checked;
+    else cb.checked ? mapa.addLayer(camadas[k]) : mapa.removeLayer(camadas[k]);
+    if (k === "grade" && cb.checked) desenhaGrade();
+    atualizaRotulos();
+  });
 }
 function autocompleta(input, aoEscolher) {        // lista de sugestões própria (funciona igual no celular)
   const lista = document.createElement("ul"); lista.className = "sugestoes"; input.parentNode.appendChild(lista);
@@ -277,15 +269,6 @@ function autocompleta(input, aoEscolher) {        // lista de sugestões própri
   });
   lista.addEventListener("mousedown", e => { const li = e.target.closest("li[data-c]"); if (li) { e.preventDefault(); aoEscolher(li.dataset.c); input.value = ""; fecha(); input.blur(); } });
   input.addEventListener("blur", () => setTimeout(fecha, 150));
-}
-function buscaNoMapa() {
-  const B = L.Control.extend({ options: { position: "topleft" },
-    onAdd() { const d = L.DomUtil.create("div", "busca-mapa");
-      d.innerHTML = `<input type="search" placeholder="🔍 Buscar município…" aria-label="Buscar município no mapa" autocomplete="off">`;
-      L.DomEvent.disableClickPropagation(d); L.DomEvent.disableScrollPropagation(d);
-      setTimeout(() => autocompleta(d.querySelector("input"), c => seleciona(c)), 0);
-      return d; } });
-  new B().addTo(mapa);
 }
 function enquadra() {
   const b = A.municipios[atual].bbox;
