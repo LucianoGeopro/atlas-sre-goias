@@ -50,17 +50,41 @@ $("#tema").onclick = () => aplicaTema(!escuro());
 aplicaTema(escuro());
 
 /* ---------------- carga ---------------- */
+// cada mês fica em data/<AAAA-MM>/ (atlas.json, sre, obras DOR); as bases fixas ficam em data/
+const MENSAIS = new Set(["sre", "dor_linhas", "dor_pontos"]);
 async function carrega() {
+  const meses = await fetch("data/meses.json", { cache: "no-cache" }).then(r => r.json());
+  const pedido = new URLSearchParams(location.search).get("mes");
+  const MES = (meses.find(m => m.id === pedido) || meses[0]).id;
   const nomes = ["municipios", "sre", "dor_linhas", "dor_pontos", "perimetro_urbano", "localidades", "snv_federal", "lotes"];
-  const [atlas, ...geos] = await Promise.all([fetch("data/atlas.json").then(r => r.json()),
-    ...nomes.map(n => fetch(`data/${n}.geojson`).then(r => r.json()))]);
+  const [atlas, ...geos] = await Promise.all([fetch(`data/${MES}/atlas.json`).then(r => r.json()),
+    ...nomes.map(n => fetch(MENSAIS.has(n) ? `data/${MES}/${n}.geojson` : `data/${n}.geojson`).then(r => r.json()))]);
   A = atlas; nomes.forEach((n, i) => GEO[n] = geos[i]);
+  textosDoMes(meses, MES);
   LISTA = Object.entries(A.municipios).sort((a, b) => a[1].ordem - b[1].ordem).map(([cod]) => cod);
   autocompleta($("#q"), c => seleciona(c));
   iniciaMapa(); legenda();
   const h = decodeURIComponent(location.hash.slice(1));
   seleciona(A.municipios[h] ? h : LISTA[0], false);
   $("#carregando").remove();
+}
+
+/* ---------------- mês da base ---------------- */
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+function textosDoMes(meses, MES) {
+  const rot = A.rotulo;                                   // "novembro/2026"
+  document.querySelectorAll(".mes-up").forEach(e => e.textContent = rot.toUpperCase());
+  document.querySelectorAll(".mes-cap").forEach(e => e.textContent = cap(rot));
+  document.querySelectorAll(".mes-min").forEach(e => e.textContent = rot);
+  if (A.elaboracao) $("#elab").textContent = A.elaboracao;
+  const sel = $("#mes");
+  sel.innerHTML = meses.map(m => `<option value="${m.id}"${m.id === MES ? " selected" : ""}>SRE ${cap(m.rotulo)}</option>`).join("");
+  sel.hidden = meses.length < 2;                          // com um mês só, não precisa do seletor
+  sel.onchange = () => {
+    const p = new URLSearchParams(location.search);
+    sel.value === meses[0].id ? p.delete("mes") : p.set("mes", sel.value);
+    location.href = location.pathname + (p.toString() ? "?" + p : "") + location.hash;
+  };
 }
 
 /* ---------------- busca ---------------- */
@@ -242,7 +266,7 @@ function desenhaGrade() {
 }
 function painelCamadas() {
   const itens = [["Camadas"],
-    ["sre", "SRE – outubro/2026"], ["dorL", "Obras DOR – lineares"], ["dorP", "Obras DOR – pontuais"],
+    ["sre", "SRE – " + A.rotulo], ["dorL", "Obras DOR – lineares"], ["dorP", "Obras DOR – pontuais"],
     ["snv", "SNV – rodovias federais"], ["loc", "Localidades"], ["perimetro", "Perímetro urbano"],
     ["municipios", "Limites municipais"], ["lotes", "Lotes de manutenção"], ["grade", "Grade de coordenadas"],
     ["satelite", "Imagem de satélite"],
@@ -533,7 +557,7 @@ function legenda() {
       <line x1="2" x2="32" y1="6" y2="6" stroke="${cor}" stroke-width="${w}" ${dash ? `stroke-dasharray="${dash}"` : ""}/></svg>`;
   const it = (sw, t) => `<div>${sw}<span>${t}</span></div>`;
   $("#legenda").innerHTML =
-    `<div class="lg-tit">SRE – Outubro/2026</div>` +
+    `<div class="lg-tit">SRE – ${cap(A.rotulo)}</div>` +
     it(ln("#e31a1c", 5), "Duplicada") + it(ln("#e31a1c", 3), "Pavimentada") + it(ln("#e31a1c", 3, "8 5"), "Em obras de pavimentação") +
     it(ln("#e88000", 3), "Implantada / Leito natural") +
     `<div class="lg-tit">SNV – Rodovias federais</div>` + it(ln("#33a02c", 3), "Federal") +
