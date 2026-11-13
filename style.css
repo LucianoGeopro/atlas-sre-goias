@@ -151,8 +151,8 @@ svg .hov:hover { opacity: .8; }
 .filtro { margin-left: auto; font: inherit; font-size: 12px; font-weight: normal; padding: 3px 8px; border: 1px solid var(--grade);
           border-radius: 3px; color: var(--ink); }
 
-/* obras DOR */
-.obras { display: grid; grid-template-columns: minmax(0, 49fr) minmax(0, 106fr); gap: 10px; margin-top: 10px; align-items: start; }
+/* obras e projetos */
+.obras { display: grid; grid-template-columns: minmax(0, 66fr) minmax(0, 89fr); gap: 10px; margin-top: 10px; align-items: start; }
 .obras .tab-rolagem { max-height: 260px; }
 .obras-quadro .sec { margin-top: 0; }
 
@@ -250,3 +250,12 @@ html[data-tema=escuro], [data-tema=escuro] body { background: var(--fundo); colo
   .obras { grid-template-columns: minmax(0, 1fr); }
   .rodape { padding: 12px 16px; }
 }
+
+/* 13/11/2026 – obras e projetos (layout 04) */
+.tarja { display: inline-block; min-width: 38px; padding: 1px 4px; font-weight: bold; text-align: center; border-radius: 2px; }
+.graf-comp { width: 100%; height: auto; }
+.peso > div:last-child { min-width: 0; }
+[data-tema=escuro] .graf-comp text[fill="#7b3fa0"] { fill: var(--t-mu) !important; }
+[data-tema=escuro] .graf-comp text[fill="#138a72"] { fill: var(--t-lt) !important; stroke: none; }
+[data-tema=escuro] .graf-comp text[fill="#2f6db5"] { fill: var(--t-go) !important; }
+[data-tema=escuro] .legenda img { background: transparent; }
