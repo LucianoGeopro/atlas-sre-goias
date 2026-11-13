@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Atlas SRE Municípios – GOINFRA</title>
-<meta name="description" content="Sistema Rodoviário Estadual – SRE, atualizado mensalmente: situação da malha, indicadores, obras da DOR e peso da malha de cada município de Goiás.">
+<meta name="description" content="Sistema Rodoviário Estadual – SRE, atualizado mensalmente: situação da malha, indicadores, obras e projetos e composição da malha de cada município de Goiás.">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 <script>try { if (/tema=escuro/.test(location.search) || localStorage.getItem("atlas-tema") === "escuro") document.documentElement.dataset.tema = "escuro"; } catch (e) { if (/tema=escuro/.test(location.search)) document.documentElement.dataset.tema = "escuro"; }</script>
 </head>
 <body>
@@ -35,7 +35,7 @@
     <div class="blk b-obras obras">
       <div class="obras-graf caixa" id="g-dor"></div>
       <div class="obras-quadro">
-        <h2 class="sec">OBRAS DOR NO MUNICÍPIO DE <span class="nome-up"></span></h2>
+        <h2 class="sec">OBRAS E PROJETOS NO MUNICÍPIO DE <span class="nome-up"></span></h2>
         <div class="tab-rolagem"><table class="tab" id="t-obras"></table></div>
       </div>
     </div>
@@ -77,6 +77,6 @@
 <div id="carregando" class="carregando">Carregando o atlas…</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="app.js?v=7"></script>
+<script src="app.js?v=8"></script>
 </body>
 </html>
