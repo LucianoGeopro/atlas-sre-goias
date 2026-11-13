@@ -6,10 +6,16 @@
 <title>Atlas SRE Municípios – GOINFRA</title>
 <meta name="description" content="Sistema Rodoviário Estadual – SRE, atualizado mensalmente: situação da malha, indicadores, obras e projetos e composição da malha de cada município de Goiás.">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css?v=9">
-<script>try { if (/tema=escuro/.test(location.search) || localStorage.getItem("atlas-tema") === "escuro") document.documentElement.dataset.tema = "escuro"; } catch (e) { if (/tema=escuro/.test(location.search)) document.documentElement.dataset.tema = "escuro"; }</script>
+<link rel="stylesheet" href="style.css?v=11">
+<script>try { if (/tema=escuro/.test(location.search) || localStorage.getItem("atlas-tema") === "escuro") document.documentElement.dataset.tema = "escuro"; } catch (e) { if (/tema=escuro/.test(location.search)) document.documentElement.dataset.tema = "escuro"; }
+// capa: aparece no link principal; link direto de município (#código) ou ?capa=0 vai direto ao atlas
+if (!location.hash && !/capa=0/.test(location.search)) document.documentElement.classList.add("capa-aberta");</script>
 </head>
 <body>
+<section id="capa" class="capa" aria-label="Capa do atlas">
+  <img class="capa-img" src="img/capa.jpg" alt="Caderno de Obras – Recorte Municipal. SRE de outubro/2026, 246 municípios goianos: situação da malha estadual com obras e indicadores. GOINFRA, SEINFRA, Governo de Goiás." width="1902" height="1345">
+  <button id="capa-entrar" class="capa-entrar" type="button">Acessar o atlas ›</button>
+</section>
 <header class="cab">
   <div class="cab-ante">SISTEMA RODOVIÁRIO ESTADUAL – SRE<br><span class="mes-up"></span></div>
   <h1 class="cab-titulo"><span id="titulo">…</span>/GO</h1>
@@ -22,6 +28,7 @@
   <button id="prox" title="Próximo município" aria-label="Próximo município">›</button>
   <span class="busca-pag" id="pag"></span>
   <select id="mes" class="mes-sel" aria-label="Mês da base do SRE" title="Mês da base do SRE" hidden></select>
+  <button id="ver-capa" class="tema-btn" type="button" title="Ver a capa">Capa</button>
   <button id="tema" class="tema-btn" type="button" title="Alternar tema claro/escuro">🌙 Tema escuro</button>
 </nav>
 
@@ -77,6 +84,6 @@
 <div id="carregando" class="carregando">Carregando o atlas…</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="app.js?v=9"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
