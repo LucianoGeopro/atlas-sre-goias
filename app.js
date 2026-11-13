@@ -29,6 +29,9 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "
 const soma = o => Object.values(o || {}).reduce((a, b) => a + b, 0);
 
 let A, GEO = {}, LISTA = [], atual = null, mapa, camadas = {}, AREA = [];
+// seleção de vários municípios (13/11/2026): SEL = códigos selecionados (o 1º é o "principal"), BBOX = caixa da seleção,
+// COMB = modo "Combinar" (clique no mapa adiciona/remove), M = dados somados da seleção
+let SEL = [], BBOX = null, COMB = false, M = null;
 
 /* ---------------- dica (tooltip) para gráficos ---------------- */
 const dica = $("#dica");
@@ -85,12 +88,14 @@ async function carrega() {
   A = atlas; nomes.forEach((n, i) => GEO[n] = geos[i]);
   textosDoMes(meses, MES);
   LISTA = Object.entries(A.municipios).sort((a, b) => a[1].ordem - b[1].ordem).map(([cod]) => cod);
-  autocompleta($("#q"), c => seleciona(c));
+  autocompleta($("#q"), c => COMB ? alterna(c, true) : seleciona(c));
   iniciaMapa(); legenda();
-  const h = decodeURIComponent(location.hash.slice(1));
-  seleciona(A.municipios[h] ? h : LISTA[0], false);
+  const h = codsDoHash();
+  selecionaLista(h.length ? h : [LISTA[0]], false);
   $("#carregando").remove();
 }
+// #5200050 ou #5200050,5209200 (link de uma seleção)
+function codsDoHash() { return decodeURIComponent(location.hash.slice(1)).split(",").map(s => s.trim()).filter(c => A.municipios[c]); }
 
 /* ---------------- mês da base ---------------- */
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
@@ -119,7 +124,7 @@ function procura(txt) {
 }
 $("#ant").onclick = () => seleciona(LISTA[(LISTA.indexOf(atual) - 1 + LISTA.length) % LISTA.length]);
 $("#prox").onclick = () => seleciona(LISTA[(LISTA.indexOf(atual) + 1) % LISTA.length]);
-window.addEventListener("hashchange", () => { const c = location.hash.slice(1); if (A.municipios[c] && c !== atual) seleciona(c, false); });
+window.addEventListener("hashchange", () => { const c = codsDoHash(); if (c.length && c.join() !== SEL.join()) selecionaLista(c, false); });
 
 /* ---------------- mapa ---------------- */
 function estiloSRE(f) {
@@ -149,8 +154,11 @@ function iniciaMapa() {
   camadas.municipios = L.geoJSON(null, { renderer: rnd,
     style: { color: "#ffffff", weight: 1, opacity: 0.8, fillOpacity: 0 },
     onEachFeature: (f, l) => {
-      l.on("click", () => { if (f.properties.cod !== atual) seleciona(f.properties.cod); });
-      l.bindTooltip(f.properties.nome, { sticky: true });
+      // modo Combinar (ou Ctrl/Shift + clique): adiciona/remove da seleção; senão abre só o município clicado
+      l.on("click", e => { const c = f.properties.cod, oe = e.originalEvent || {};
+        if (COMB || oe.ctrlKey || oe.shiftKey || oe.metaKey) alterna(c);
+        else if (c !== atual || SEL.length > 1) seleciona(c); });
+      l.bindTooltip(() => f.properties.nome + (SEL.includes(f.properties.cod) ? " (selecionado)" : COMB ? " — clique para somar" : ""), { sticky: true });
     } });
   camadas.lotes = L.geoJSON(GEO.lotes, { renderer: rnd,
     style: { color: T_LT, weight: 2, fillColor: T_LT, fillOpacity: 0.08, dashArray: "6 4" },
@@ -238,9 +246,9 @@ function caixa(g) {                        // [xmin, ymin, xmax, ymax] de qualqu
   if (g && g.coordinates) vai(g.coordinates);
   return [x0, y0, x1, y1];
 }
-function preencheArea(cod) {
-  // município + uma margem de meia largura em cada lado (pega os vizinhos e o que o enquadramento mostra)
-  const b = A.municipios[cod].bbox, mx = Math.max(b[2] - b[0], b[3] - b[1]) * 0.6;
+function preencheArea() {
+  // seleção + uma margem de meia largura em cada lado (pega os vizinhos e o que o enquadramento mostra)
+  const b = BBOX, mx = Math.max(b[2] - b[0], b[3] - b[1]) * 0.6;
   const z = [b[0] - mx, b[1] - mx, b[2] + mx, b[3] + mx];
   const dentroZ = bb => !(bb[2] < z[0] || bb[0] > z[2] || bb[3] < z[1] || bb[1] > z[3]);
   AREA.forEach(([lyr, n]) => { lyr.clearLayers(); lyr.addData({ type: "FeatureCollection", features: GEO[n].features.filter(f => dentroZ(f._bb)) }); });
@@ -278,12 +286,12 @@ function meio(g) {                         // ponto no meio da linha mais longa 
       const a = c[k - 1] || c[0], b = c[k] || a, s = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; best = [a[0] + (b[0] - a[0]) * h / s, a[1] + (b[1] - a[1]) * h / s]; } });
   return [best, bl];
 }
-// rótulos das rodovias do município selecionado: um por rodovia (GO e BR), no trecho mais longo dentro do município
-function montaRotulosVias(cod) {
+// rótulos das rodovias da seleção: um por rodovia (GO e BR), no trecho mais longo dentro dos municípios selecionados
+function montaRotulosVias(cods) {
   camadas.rotVias.clearLayers();
-  const gm = GEO.municipios.features.find(f => f.properties.cod === cod).geometry, b = A.municipios[cod].bbox;
+  const gms_ = GEO.municipios.features.filter(f => cods.includes(f.properties.cod)).map(f => f.geometry), b = BBOX;
   const melhor = {};
-  const avalia = (chave, g, tipo) => { const [p, l] = meio(g); if (!p || p[0] < b[0] || p[0] > b[2] || p[1] < b[1] || p[1] > b[3] || !dentro(p, gm)) return;
+  const avalia = (chave, g, tipo) => { const [p, l] = meio(g); if (!p || p[0] < b[0] || p[0] > b[2] || p[1] < b[1] || p[1] > b[3] || !gms_.some(gm => dentro(p, gm))) return;
     if (!melhor[chave] || melhor[chave].l < l) melhor[chave] = { p, l, tipo }; };
   GEO.sre.features.forEach(f => f.properties.go && avalia("GO-" + f.properties.go, f.geometry, "go"));
   GEO.snv_federal.features.forEach(f => f.properties.br && avalia("BR-" + String(f.properties.br).padStart(3, "0"), f.geometry, "br"));
@@ -305,7 +313,7 @@ function atualizaRotulos() {
   ROT.vias ? mapa.addLayer(camadas.rotVias) : mapa.removeLayer(camadas.rotVias);
   ROT.lotes ? mapa.addLayer(camadas.rotLotes) : mapa.removeLayer(camadas.rotLotes);
   if (ROT.mun && z >= 8) { mapa.addLayer(camadas.rotMun);
-    camadas.rotMun.eachLayer(m => { const el = m.getElement(); if (el) el.classList.toggle("atual", m._cod === atual); });
+    camadas.rotMun.eachLayer(m => { const el = m.getElement(); if (el) el.classList.toggle("atual", SEL.includes(m._cod)); });
   } else mapa.removeLayer(camadas.rotMun);
   if (mapa.hasLayer(camadas.grade)) desenhaGrade();
 }
@@ -374,22 +382,22 @@ function autocompleta(input, aoEscolher) {        // lista de sugestões própri
   lista.addEventListener("mousedown", e => { const li = e.target.closest("li[data-c]"); if (li) { e.preventDefault(); aoEscolher(li.dataset.c); input.value = ""; fecha(); input.blur(); } });
   input.addEventListener("blur", () => setTimeout(fecha, 150));
 }
-function enquadra() {
-  const b = A.municipios[atual].bbox;
+function enquadra(b = BBOX) {
   mapa.invalidateSize();
   mapa.fitBounds([[b[1], b[0]], [b[3], b[2]]], { padding: [18, 18] });
 }
-function destacaMunicipio(cod) {
+function destacaMunicipios(cods) {
   if (camadas.mascara) mapa.removeLayer(camadas.mascara);
   if (camadas.contorno) mapa.removeLayer(camadas.contorno);
-  const f = GEO.municipios.features.find(x => x.properties.cod === cod);
+  const fs = GEO.municipios.features.filter(x => cods.includes(x.properties.cod));
   const aneis = [];
-  const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
-  polys.forEach(p => aneis.push(p[0].map(([x, y]) => [y, x])));
-  // fora do município: fundo claro (como o recorte do atlas); dentro: satélite
+  fs.forEach(f => (f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates)
+    .forEach(p => aneis.push(p[0].map(([x, y]) => [y, x]))));
+  // fora da seleção: fundo claro (como o recorte do atlas); dentro: satélite
   camadas.mascara = L.polygon([[[-90, -180], [-90, 180], [90, 180], [90, -180]], ...aneis], {
     pane: "mascara", stroke: false, ...estiloMascara(), interactive: false }).addTo(mapa);
-  camadas.contorno = L.geoJSON(f, { pane: "vias", style: { color: "#ffd400", weight: 4, fill: false }, interactive: false }).addTo(mapa);
+  camadas.contorno = L.geoJSON({ type: "FeatureCollection", features: fs }, { pane: "vias",
+    style: { color: "#ffd400", weight: 4, fill: false }, interactive: false }).addTo(mapa);
 }
 function destacaTrecho(sre) {
   if (camadas.sel) mapa.removeLayer(camadas.sel);
@@ -397,31 +405,149 @@ function destacaTrecho(sre) {
   if (!fs.length) return;
   camadas.sel = L.geoJSON({ type: "FeatureCollection", features: fs }, { pane: "topo",
     style: { color: "#00e5ff", weight: 9, opacity: 0.75 }, interactive: false }).addTo(mapa);
-  const b = camadas.sel.getBounds(), m = A.municipios[atual].bbox;
+  const b = camadas.sel.getBounds(), m = BBOX;
   const mb = L.latLngBounds([[m[1], m[0]], [m[3], m[2]]]);
   mapa.fitBounds(mb.intersects(b) ? L.latLngBounds(b.getSouthWest(), b.getNorthEast()) : b, { padding: [40, 40], maxZoom: 13 });
   document.getElementById("mapa").scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
-/* ---------------- seleção do município ---------------- */
-function seleciona(cod, hist = true) {
-  atual = cod; const m = A.municipios[cod];
-  if (hist) history.replaceState(null, "", "#" + cod);
-  document.title = `${m.nome}/GO – Atlas SRE Municípios`;
-  $("#titulo").textContent = m.nome;
-  document.querySelectorAll(".nome-up").forEach(e => e.textContent = m.nome.toUpperCase());
-  $("#q").value = ""; $("#q").placeholder = m.nome + " — buscar outro município…";
-  $("#pag").textContent = `Página ${m.ordem} de ${LISTA.length}`;
+/* ---------------- seleção: um ou vários municípios (13/11/2026) ---------------- */
+function seleciona(cod, hist = true) { selecionaLista([cod], hist); }
+// adiciona/remove um município da seleção (modo Combinar, Ctrl+clique ou busca no modo Combinar)
+function alterna(cod, soAdiciona = false) {
+  if (SEL.includes(cod)) { if (soAdiciona || SEL.length === 1) return; selecionaLista(SEL.filter(c => c !== cod)); }
+  else selecionaLista([...SEL, cod]);
+}
+const nomeLista = ns => ns.length === 1 ? ns[0] : ns.slice(0, -1).join(", ") + " e " + ns[ns.length - 1];
+function selecionaLista(cods, hist = true) {
+  SEL = [...new Set(cods)].filter(c => A.municipios[c]); if (!SEL.length) return;
+  atual = SEL[0];
+  const multi = SEL.length > 1, ms = SEL.map(c => A.municipios[c]);
+  BBOX = ms.reduce((b, m) => [Math.min(b[0], m.bbox[0]), Math.min(b[1], m.bbox[1]), Math.max(b[2], m.bbox[2]), Math.max(b[3], m.bbox[3])],
+    [1e9, 1e9, -1e9, -1e9]);
+  M = multi ? agrega(SEL) : ms[0];
+  if (hist) history.replaceState(null, "", "#" + SEL.join(","));
+  const nomes = ms.map(m => m.nome), curto = multi && SEL.length > 3 ? `${SEL.length} municípios` : nomeLista(nomes);
+  document.title = `${multi ? curto : nomes[0] + "/GO"} – Atlas SRE Municípios`;
+  $("#titulo").textContent = multi ? curto : nomes[0];
+  document.querySelector(".cab-titulo").classList.toggle("multi", multi);
+  document.querySelectorAll(".nome-up").forEach(e => e.textContent = (multi ? curto : nomes[0]).toUpperCase());
+  document.querySelectorAll(".no-mun").forEach(e => e.textContent = multi ? "NOS MUNICÍPIOS DE " + nomeLista(nomes).toUpperCase()
+    : "NO MUNICÍPIO DE " + nomes[0].toUpperCase());
+  $("#q").value = ""; $("#q").placeholder = COMB ? "Somar outro município…" : (multi ? "Buscar município…" : nomes[0] + " — buscar outro município…");
+  $("#pag").textContent = multi ? `${SEL.length} municípios selecionados` : `Página ${ms[0].ordem} de ${LISTA.length}`;
   if (camadas.sel) { mapa.removeLayer(camadas.sel); camadas.sel = null; }
-  preencheArea(cod); destacaMunicipio(cod); montaRotulosVias(cod); enquadra(); atualizaRotulos();
-  cartoes(m); grafSituacao(m); grafRodovia(m); grafUrbano(m); grafPeso(cod, m); grafTipoObra(m);
-  tabelaObras(m); tabelaSRE(m);
-  $("#notas").textContent = (m.notas || "").replace(/\\n/g, "\n");
+  preencheArea(); destacaMunicipios(SEL); montaRotulosVias(SEL); enquadra(); atualizaRotulos();
+  cartoes(M); grafSituacao(M); grafRodovia(M); grafUrbano(M); grafPeso(SEL, M); grafTipoObra(M);
+  tabelaObras(M, multi); tabelaSRE(M, multi); comparacao(); barraSelecao();
+  $("#notas").textContent = (M.notas || "").replace(/\\n/g, "\n");
+}
+
+// soma dos municípios selecionados — trechos, obras e projetos que cruzam a divisa entre eles contam uma vez só
+function somaDic(lista) { const o = {}; lista.forEach(d => Object.entries(d || {}).forEach(([k, v]) => o[k] = (o[k] || 0) + v)); return o; }
+function somaDic2(lista) { const o = {}; lista.forEach(d => Object.entries(d || {}).forEach(([k, r]) => o[k] = somaDic([o[k], r]))); return o; }
+function agrega(cods) {
+  const ms = cods.map(c => A.municipios[c]), comNome = (rows, m) => (rows || []).map(r => ({ ...r, _mun: m.nome }));
+  const s = somaDic(ms.map(m => m.situacao)), tot = soma(s), pav = (s.PAV || 0) + (s.DUP || 0), eop = s.EOP || 0;
+  const area = ms.reduce((a, m) => a + (m.area_km2 || 0), 0);
+  const un = k => new Set(ms.flatMap(m => m[k] || [])).size;
+  const go = somaDic2(ms.map(m => m.go_situacao)), nr = Object.values(go).filter(r => soma(r) > 0).length;
+  const fx = ms.reduce((a, m) => a + (m.faixa_ha || 0), 0), G = A.goias;
+  const pc1 = v => tot ? br(100 * v / tot) + "%" : "–";
+  const nomes = ms.map(m => m.nome);
+  return {
+    nome: nomeLista(nomes), rot: "Seleção", multi: true, area_km2: area,
+    situacao: s, go_situacao: go, urbano_situacao: somaDic2(ms.map(m => m.urbano_situacao)), peso: somaDic2(ms.map(m => m.peso)),
+    c1_val: km2(tot), c1_sub: `${un("ids")} trechos  |  ${nr} rodovia${nr === 1 ? "" : "s"}`,
+    c2_val: pc1(pav), c2_sub: `Goiás: ${br(G.idx_pav ?? 100 * ((G.situacao.PAV || 0) + (G.situacao.DUP || 0)) / G.total)}%`,
+    c3_val: pc1(pav + eop), c3_sub: eop > 0 ? `${km2(eop)} em obras` : "0 Km em obras",
+    c4_val: area ? br(1000 * tot / area) : "–", c4_sub: `Km/1.000 Km²  |  GO: ${br(G.dens ?? 0)}`,
+    c5_val: br(fx, 2) + " ha", c5_sub: `${un("fx")} trechos  |  ${un("dc")} c/ decreto`,
+    obras: ms.flatMap(m => comNome(m.obras, m)).sort((a, b) => (a.natureza !== "Obra") - (b.natureza !== "Obra") || String(a.mapa).localeCompare(String(b.mapa))),
+    trechos: ms.flatMap(m => comNome(m.trechos, m)),
+    notas: `• Seleção de ${ms.length} municípios: ${nomeLista(nomes)}.\n` +
+      `• Base: SRE-GO ${A.rotulo} recortado pelos limites municipais; extensões medidas sobre o elipsoide GRS80 (SIRGAS 2000).\n` +
+      `• Somas: Km, área e faixa de domínio somados; trechos, obras e projetos que cruzam a divisa entre municípios selecionados contam uma vez só (os Km de cada parte se somam).\n` +
+      `• Índice de pavimentação, "após as obras" e densidade recalculados sobre o total da seleção (área somada: ${br(area, 2)} Km²).\n` +
+      `• Totais e gráficos: só trechos estaduais principais; o quadro também lista os trechos coincidentes e federais.\n` +
+      `• Obras e projetos: cadastros de 12/11/2026; no mapa, o projeto aparece inteiro.`
+  };
+}
+
+// obras/projetos por tipo a partir das linhas do quadro (obra/projeto que aparece em 2 municípios conta uma vez)
+function tipoDeObras(rows) {
+  const t = { Obra: { lineares: {}, pontuais: {} }, Projeto: { lineares: {}, pontuais: {} } }, vistos = new Set();
+  (rows || []).forEach(r => { const T = t[r.natureza]; if (!T) return;
+    if (r.tipo === "Trecho") { const x = T.lineares[r.intervencao] = T.lineares[r.intervencao] || { n: 0, km: 0, cods: new Set() };
+      if (!x.cods.has(r.codigo)) { x.cods.add(r.codigo); x.n++; } x.km += r.km_mun || 0; }
+    else if (!vistos.has(r.natureza + r.codigo)) { vistos.add(r.natureza + r.codigo); T.pontuais[r.intervencao] = (T.pontuais[r.intervencao] || 0) + 1; } });
+  return t;
+}
+
+/* ---------- barra da seleção (chips) e modo Combinar ---------- */
+function barraSelecao() {
+  const b = $("#selecao"), multi = SEL.length > 1;
+  b.hidden = !(COMB || multi);
+  $("#combinar").classList.toggle("ativo", COMB);
+  $("#combinar").setAttribute("aria-pressed", COMB);
+  if (b.hidden) return;
+  b.innerHTML = `<span class="sel-tit">${COMB ? "Modo combinar: clique no mapa para somar ou tirar municípios." : "Seleção:"}</span>` +
+    SEL.map(c => `<span class="chip" title="${esc(A.municipios[c].nome)}">${esc(A.municipios[c].nome)}` +
+      (multi ? `<button type="button" data-c="${c}" aria-label="Tirar ${esc(A.municipios[c].nome)} da seleção">×</button>` : "") + `</span>`).join("") +
+    (multi ? `<span class="sel-tot">Total: <b>${esc(M.c1_val)}</b></span>` +
+      `<button type="button" class="sel-btn" id="sel-comp">Ver comparação ↓</button>` +
+      `<button type="button" class="sel-btn" id="sel-copiar" title="Copiar o link desta seleção">Copiar link</button>` +
+      `<button type="button" class="sel-btn" id="sel-limpar">Limpar seleção</button>` : "");
+  b.querySelectorAll(".chip button").forEach(x => x.onclick = () => alterna(x.dataset.c));
+  if (multi) {
+    $("#sel-limpar").onclick = () => selecionaLista([SEL[0]]);
+    $("#sel-comp").onclick = () => $("#comp").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("#sel-copiar").onclick = () => { const u = location.href; (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject())
+      .then(() => { $("#sel-copiar").textContent = "Link copiado ✓"; setTimeout(() => $("#sel-copiar") && ($("#sel-copiar").textContent = "Copiar link"), 1800); })
+      .catch(() => prompt("Copie o link:", u)); };
+  }
+}
+$("#combinar").onclick = () => { if (!A) return; COMB = !COMB; barraSelecao();
+  $("#q").placeholder = COMB ? "Somar outro município…" : (SEL.length > 1 ? "Buscar município…" : A.municipios[atual].nome + " — buscar outro município…"); };
+
+/* ---------- comparação entre os municípios selecionados ---------- */
+function linhaComp(c) {
+  const m = A.municipios[c], s = m.situacao || {}, tot = soma(s), pav = (s.PAV || 0) + (s.DUP || 0), t = tipoDeObras(m.obras);
+  const n = o => Object.values(o.lineares).reduce((a, x) => a + x.n, 0), k = o => Object.values(o.lineares).reduce((a, x) => a + x.km, 0);
+  const p = o => soma(o.pontuais);
+  return { cod: c, nome: m.nome, ext: tot, ip: tot ? 100 * pav / tot : null, ipos: tot ? 100 * (pav + (s.EOP || 0)) / tot : null,
+    dens: m.area_km2 ? 1000 * tot / m.area_km2 : null, fx: m.faixa_ha || 0, area: m.area_km2,
+    ob_n: n(t.Obra), ob_km: k(t.Obra), ob_p: p(t.Obra), pj_n: n(t.Projeto), pj_km: k(t.Projeto), pj_p: p(t.Projeto), s };
+}
+function comparacao() {
+  const el = $("#comp");
+  if (SEL.length < 2) { el.hidden = true; return; }
+  el.hidden = false;
+  const L_ = SEL.map(linhaComp), mx = k => Math.max(1e-9, ...L_.map(l => l[k] || 0));
+  const barra = (v, max, cor, txt) => `<div class="cbar"><b style="width:${Math.max(0, Math.min(100, 100 * (v || 0) / max))}%;background:${cor}"></b><span>${txt}</span></div>`;
+  $("#comp-graf").innerHTML = cab("Extensão por situação, por município", "Km no município (estaduais principais)") +
+    empilhado(L_.filter(l => l.ext > 0).map(l => ({ rot: l.nome, r: l.s })), 760);
+  const mExt = mx("ext"), mDens = mx("dens"), mFx = mx("fx");
+  const t = tabela($("#t-comp"), [
+    { k: "nome", t: "Município" },
+    { k: "ext", t: "Extensão (Km)", f: v => barra(v, mExt, "#e31a1c", br(v, 2)) },
+    { k: "ip", t: "Índice de pav.", f: v => v === null ? "–" : barra(v, 100, "#7a0a0d", br(v) + "%") },
+    { k: "ipos", t: "Após obras de pav.", f: v => v === null ? "–" : barra(v, 100, "#f7a8a9", br(v) + "%") },
+    { k: "dens", t: "Densidade (Km/1.000 Km²)", f: v => v === null ? "–" : barra(v, mDens, "#2f6db5", br(v)) },
+    { k: "fx", t: "Faixa de domínio (ha)", f: v => barra(v, mFx, "#138a72", br(v, 2)) },
+    { k: "ob_n", t: "Obras", f: (v, l) => v || l.ob_p ? `${v} · ${km2(l.ob_km)}${l.ob_p ? ` + ${l.ob_p} pontual${l.ob_p > 1 ? "is" : ""}` : ""}` : "–" },
+    { k: "pj_n", t: "Projetos", f: (v, l) => v || l.pj_p ? `${v} · ${km2(l.pj_km)}${l.pj_p ? ` + ${l.pj_p} pontual${l.pj_p > 1 ? "is" : ""}` : ""}` : "–" }
+  ], L_, "", l => { const b = A.municipios[l.cod].bbox; enquadra(b); $("#mapa").scrollIntoView({ behavior: "smooth", block: "center" }); });
+  const T = tipoDeObras(M.obras), nn = o => Object.values(o.lineares).reduce((a, x) => a + x.n, 0), kk = o => Object.values(o.lineares).reduce((a, x) => a + x.km, 0);
+  $("#comp-tot").innerHTML = `<b>Total da seleção:</b> ${esc(M.c1_val)} · índice de pavimentação ${esc(M.c2_val)} · após as obras ${esc(M.c3_val)} · ` +
+    `densidade ${esc(M.c4_val)} Km/1.000 Km² · faixa ${esc(M.c5_val)} · obras ${nn(T.Obra)} (${km2(kk(T.Obra))}) · projetos ${nn(T.Projeto)} (${km2(kk(T.Projeto))}). ` +
+    `<span class="g-sub">Clique numa linha para ver o município no mapa; clique no título da coluna para ordenar.</span>`;
+  return t;
 }
 
 /* ---------------- cartões ---------------- */
 function cartoes(m) {
-  const tit = ["EXTENSÃO NO MUNICÍPIO", "ÍNDICE DE PAVIMENTAÇÃO", "APÓS AS OBRAS DE PAVIMENTAÇÃO", "DENSIDADE RODOVIÁRIA", "FAIXA DE DOMÍNIO"];
+  const tit = [m.multi ? "EXTENSÃO NA SELEÇÃO" : "EXTENSÃO NO MUNICÍPIO", "ÍNDICE DE PAVIMENTAÇÃO", "APÓS AS OBRAS DE PAVIMENTAÇÃO", "DENSIDADE RODOVIÁRIA", "FAIXA DE DOMÍNIO"];
   $("#cartoes").innerHTML = tit.map((t, i) => `<div class="cartao">
       <div class="cartao-tit">${t}</div><img src="img/c${i + 1}.svg" alt="">
       <div class="cartao-val">${esc(m[`c${i + 1}_val`])}</div>
@@ -454,10 +580,10 @@ function ticks(max) {
   const p = Math.pow(10, Math.floor(Math.log10(max / 4))), passo = [1, 2, 2.5, 5, 10].map(k => k * p).find(k => max / k <= 5);
   const r = []; for (let v = 0; v <= max; v += passo) r.push(+v.toFixed(6)); return r;
 }
-function empilhado(linhas) {               // [{rot, r:{sit:km}}]
+function empilhado(linhas, W = 300) {      // [{rot, r:{sit:km}}]; W maior = gráfico largo sem ampliar as letras
   const tots = linhas.map(l => soma(l.r)), vmax = Math.max(...tots);
   const lw = Math.max(...linhas.map(l => textW(l.rot, 11))) + 8;
-  const W = 300, bh = 18, gap = 8, H = linhas.length * (bh + gap) + 18, x0 = lw, bw = (W - x0) / 1.3;
+  const bh = 18, gap = 8, H = linhas.length * (bh + gap) + 18, x0 = lw, bw = (W - x0) / 1.3;
   let s = `<svg class="graf" viewBox="0 0 ${W} ${H}">`;
   for (const t of ticks(vmax * 1.3)) {
     const x = x0 + bw * t / vmax; if (x > W) continue;
@@ -501,7 +627,7 @@ function grafUrbano(m) {
 }
 // "Tipo de Obra" (igual ao gráfico do layout 04): barras "Obra – X" e "Projeto – X" + texto dos pontuais
 function grafTipoObra(m) {
-  const t = m.tipo_obra || {}, O = t.Obra || { lineares: {}, pontuais: {} }, P = t.Projeto || { lineares: {}, pontuais: {} };
+  const t = tipoDeObras(m.obras), O = t.Obra, P = t.Projeto;   // a partir do quadro: vale para 1 ou vários municípios
   const txtP = (titulo, pon) => titulo + ": " + Object.entries(pon).sort((a, b) => b[1] - a[1])
     .map(([k, n]) => `${n} ${n > 1 ? (PLURAL[k] || k.toLowerCase() + "s") : k.toLowerCase()}`).join(" · ");
   let h = cab("Tipo de Obra", "obras e projetos: quantidade e Km no município");
@@ -530,7 +656,7 @@ function grafTipoObra(m) {
 
 /* --- comparativo: peso da malha do município no próprio município, no(s) lote(s) e em Goiás --- */
 function pc(v) { if (v <= 0) return "0%"; return (v < 0.01 ? "<0,01" : br(v, v >= 1 ? 1 : 2)) + "%"; }
-function miniMapa(cod, lts) {
+function miniMapa(cods, lts) {
   const todos = GEO.lotes.features; let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
   const anel = g => (g.type === "Polygon" ? [g.coordinates] : g.coordinates);
   todos.forEach(f => anel(f.geometry).forEach(p => p[0].forEach(([x, y]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); })));
@@ -541,9 +667,9 @@ function miniMapa(cod, lts) {
   let s = `<svg viewBox="0 0 ${S} ${S}">`;
   todos.forEach(f => { const k = f.properties.lote, meu = lts.includes(k);
     s += `<path class="hov" d="${d(f.geometry)}" fill="${meu ? "#7fcbb9" : "#e3ecf8"}" stroke="${meu ? "#fff" : "#a9bfdf"}" stroke-width=".7"
-            data-tip="Lote ${esc(k)}${meu ? " — contém o município" : ""}"/>`; });
-  const fm = GEO.municipios.features.find(f => f.properties.cod === cod);
-  s += `<path d="${d(fm.geometry)}" fill="${T_MU}" stroke="${T_MU}" stroke-width=".6" pointer-events="none"/>`;
+            data-tip="Lote ${esc(k)}${meu ? (cods.length > 1 ? " — contém a seleção" : " — contém o município") : ""}"/>`; });
+  GEO.municipios.features.filter(f => cods.includes(f.properties.cod)).forEach(fm =>
+    s += `<path d="${d(fm.geometry)}" fill="${T_MU}" stroke="${T_MU}" stroke-width=".6" pointer-events="none"/>`);
   if (lts.length > 1) todos.filter(f => lts.includes(f.properties.lote)).forEach(f => {
     let mx = 0, my = 0, n = 0; anel(f.geometry).forEach(p => p[0].forEach(c => { mx += c[0]; my += c[1]; n++; }));
     const [x, y] = P([mx / n, my / n]).split(",");
@@ -551,7 +677,7 @@ function miniMapa(cod, lts) {
   });
   return s + "</svg>";
 }
-function grafPeso(cod, m) {
+function grafPeso(cods, m) {
   const ml = m.peso || {}, ms = {};
   Object.values(ml).forEach(r => Object.entries(r).forEach(([s, v]) => ms[s] = (ms[s] || 0) + v));
   const tm = soma(ms);
@@ -562,7 +688,8 @@ function grafPeso(cod, m) {
   const sits = ["PAV", "DUP", "EOD", "EOP", "IMP", "LEN"];
   const rl = lts.length === 1 ? "Lote " + lts[0] : "Lotes " + lts.slice(0, -1).join(", ") + " e " + lts[lts.length - 1];
   // barras em Km (layout 04): cada linha mostra a composição da própria malha; extensão total à direita
-  const linhas = [{ rot: m.nome, r: ms, cor: T_MU }, ...lts.map(k => ({ rot: "Lote " + k, r: LT[k] || {}, cor: T_LT })),
+  const rotM = m.multi ? `Seleção (${cods.length})` : m.nome;
+  const linhas = [{ rot: rotM, r: ms, cor: T_MU }, ...lts.map(k => ({ rot: "Lote " + k, r: LT[k] || {}, cor: T_LT })),
     { rot: "Goiás", r: GO, cor: T_GO }];
   const W = 640, x0 = 150, xT = W - 92, bw = xT - x0 - 10, bh = 22, gap = 22;
   let s = `<svg class="graf graf-comp" viewBox="0 0 ${W} ${linhas.length * (bh + gap) + 4}">`;
@@ -582,8 +709,8 @@ function grafPeso(cod, m) {
     s += `<text x="${xT}" y="${y + bh / 2 + 4}" font-size="11" font-weight="bold" style="fill:${l.cor}" fill="${l.cor}">${km2(tot)}</text>`;
   });
   s += `</svg><div class="leg-g">${sits.map(c => `<span><i style="background:${SIT[c][1]}"></i>${SIT[c][0]}</span>`).join("")}</div>`;
-  const nm0 = m.nome.length <= 22 ? m.nome : m.nome.slice(0, 21) + "…";
-  $("#g-peso").innerHTML = h + `<div class="peso"><div class="peso-mapa">${miniMapa(cod, lts)}
+  const nm0 = m.multi ? `Seleção: ${cods.length} municípios` : (m.nome.length <= 22 ? m.nome : m.nome.slice(0, 21) + "…");
+  $("#g-peso").innerHTML = h + `<div class="peso"><div class="peso-mapa">${miniMapa(cods, lts)}
         <div class="peso-rot"><span style="color:${T_MU}">${esc(nm0)}</span><br><span style="color:${T_LT}">${esc(rl)}</span><br><span style="color:${T_GO}">Goiás</span></div></div><div>${s}</div></div>`;
 }
 
@@ -612,18 +739,20 @@ function corTarja(l) {
   if (l.tipo === "Pontual") { const p = PJ_PONT[l.cat] || PJ_PONT.Projeto; return [p[1], p[2]]; }
   return [PJ_COR[l.intervencao] || "#666666", "#fff"];
 }
-function tabelaObras(m) {
+function tabelaObras(m, multi = false) {
   const ls = (m.obras || []).map(l => ({ ...l, _cor: corTarja(l) }));
   tabela($("#t-obras"), [
+    ...(multi ? [{ k: "_mun", t: "Município" }] : []),
     { k: "mapa", t: "Mapa", f: (v, l) => `<span class="tarja" style="background:${l._cor[0]};color:${l._cor[1]}">${esc(v)}</span>` },
     { k: "codigo", t: "Código" }, { k: "rodovia", t: "Rodovia" }, { k: "intervencao", t: "Intervenção" },
     { k: "tipo", t: "Tipo" }, { k: "km_mun", t: "Km mun.", f: v => num(v, 2) }, { k: "km_contrato", t: "Km contr.", f: v => num(v, 2) },
     { k: "etapa", t: "Etapa" }, { k: "situacao", t: "Situação" }, { k: "natureza", t: "Natureza" }], ls, "Sem obras e projetos para o município");
 }
 let tSRE = null;
-function tabelaSRE(m) {
+function tabelaSRE(m, multi = false) {
   $("#filtro").value = "";
   tSRE = tabela($("#t-sre"), [
+    ...(multi ? [{ k: "_mun", t: "Município" }] : []),
     { k: "sre", t: "SRE" }, { k: "go", t: "GO" }, { k: "classe", t: "Classe" }, { k: "inicio", t: "Início" }, { k: "fim", t: "Fim" },
     { k: "km_ini", t: "Km inicial", f: v => num(v, 2) }, { k: "km_fim", t: "Km final", f: v => num(v, 2) },
     { k: "ext", t: "Ext. SRE (Km)", f: v => num(v, 2) }, { k: "ext_mun", t: "Ext. no mun. (Km)", f: v => num(v, 2) },
