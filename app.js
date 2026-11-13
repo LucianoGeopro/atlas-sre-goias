@@ -53,12 +53,12 @@ document.addEventListener("click", ev => {
 
 /* ---------------- tema claro / escuro ---------------- */
 const escuro = () => document.documentElement.dataset.tema === "escuro";
-const estiloMascara = () => escuro() ? { fillColor: "#16181a", fillOpacity: 0.8 } : { fillColor: "#eeeeea", fillOpacity: 0.82 };
+const estiloMascara = () => escuro() ? "rgba(22,24,26,0.8)" : "rgba(238,238,234,0.82)";
 function aplicaTema(esc_) {
   if (esc_) document.documentElement.dataset.tema = "escuro"; else delete document.documentElement.dataset.tema;
   $("#tema").textContent = esc_ ? "☀ Tema claro" : "🌙 Tema escuro";
   try { localStorage.setItem("atlas-tema", esc_ ? "escuro" : "claro"); } catch (e) {}
-  if (camadas.mascara) camadas.mascara.setStyle(estiloMascara());
+  if (camadas.mascara) camadas.mascara.redesenha();
 }
 $("#tema").onclick = () => aplicaTema(!escuro());
 aplicaTema(escuro());
@@ -146,6 +146,8 @@ function iniciaMapa() {
   mapa.createPane("obras").style.zIndex = 430;
   mapa.createPane("projP").style.zIndex = 436;
   mapa.createPane("topo").style.zIndex = 440;
+  // 13/11/2026: painéis só de desenho não podem "engolir" o clique (o clique tem que chegar ao município)
+  ["mascara", "vias", "topo"].forEach(p => mapa.getPane(p).style.pointerEvents = "none");
   const rnd = L.canvas({ padding: 0.3 });
 
   // 13/11/2026: as camadas nascem vazias e recebem só a área do município selecionado (preencheArea)
@@ -154,15 +156,11 @@ function iniciaMapa() {
   camadas.municipios = L.geoJSON(null, { renderer: rnd,
     style: { color: "#ffffff", weight: 1, opacity: 0.8, fillOpacity: 0 },
     onEachFeature: (f, l) => {
-      // modo Combinar (ou Ctrl/Shift + clique): adiciona/remove da seleção; senão abre só o município clicado
-      l.on("click", e => { const c = f.properties.cod, oe = e.originalEvent || {};
-        if (COMB || oe.ctrlKey || oe.shiftKey || oe.metaKey) alterna(c);
-        else if (c !== atual || SEL.length > 1) seleciona(c); });
       l.bindTooltip(() => f.properties.nome + (SEL.includes(f.properties.cod) ? " (selecionado)" : COMB ? " — clique para somar" : ""), { sticky: true });
     } });
-  camadas.lotes = L.geoJSON(GEO.lotes, { renderer: rnd,
-    style: { color: T_LT, weight: 2, fillColor: T_LT, fillOpacity: 0.08, dashArray: "6 4" },
-    onEachFeature: (f, l) => l.bindTooltip("Lote " + f.properties.lote, { sticky: true }) });
+  // lotes só desenhados (o nome já aparece no mapa); clicável, o lote ficaria por cima e travaria o clique no município
+  camadas.lotes = L.geoJSON(GEO.lotes, { renderer: rnd, interactive: false,
+    style: { color: T_LT, weight: 2, fillColor: T_LT, fillOpacity: 0.08, dashArray: "6 4" } });
   camadas.snv = L.geoJSON(null, { renderer: rnd, pane: "vias",
     style: { color: "#33a02c", weight: 3 },
     onEachFeature: (f, l) => l.bindTooltip(`BR-${esc(f.properties.br)} · Federal`, { sticky: true }) });
@@ -174,8 +172,9 @@ function iniciaMapa() {
       style: f => ({ color: DOR_COR[f.properties.intervencao] || "#0055d6", weight: 5 }),
       onEachFeature: (f, l) => l.bindTooltip(`<b>Obra – ${esc(f.properties.intervencao)}</b><br>${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`, { sticky: true }) });
   camadas.dorL = L.layerGroup([dorCasco, dorCor]);
-  camadas.dorP = L.geoJSON(null, { pane: "topo",
-    pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 7, color: "#ffffff", weight: 2, fillColor: DOR_PONT, fillOpacity: 1 }),
+  // pontos no mesmo canvas das linhas (um canvas próprio por cima bloqueava o clique nos municípios)
+  camadas.dorP = L.geoJSON(null, {
+    pointToLayer: (f, ll) => L.circleMarker(ll, { renderer: rnd, radius: 7, color: "#ffffff", weight: 2, fillColor: DOR_PONT, fillOpacity: 1 }),
     onEachFeature: (f, l) => l.bindTooltip(`<b>Obra pontual – ${esc(f.properties.intervencao)}</b><br>${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`) });
   // projetos (DPJ): faixa colorida + linha branca no meio (contínua = Projeto; tracejada = Planejamento/Licitação)
   const dicaPJ = p => `<b>Projeto – ${esc(p.intervencao)} - ${esc(p.etapa)}</b><br>${esc(p.rodovia || "")} · ${esc(p.codigo || "")}`;
@@ -190,17 +189,25 @@ function iniciaMapa() {
     pointToLayer: (f, ll) => L.marker(ll, { pane: "projP", icon: L.icon({ iconUrl: (PJ_PONT[f.properties.cat] || PJ_PONT.Projeto)[0],
       iconSize: [22, 22], iconAnchor: [11, 11] }) }),
     onEachFeature: (f, l) => l.bindTooltip(`<b>Projeto pontual – ${esc(f.properties.cat)}</b><br>${esc(f.properties.intervencao)} · ${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`) });
-  camadas.loc = L.geoJSON(null, { pane: "topo",
-    pointToLayer: (f, ll) => L.circleMarker(ll, { radius: /Sede|Capital/.test(f.properties.t) ? 4 : 2.5, color: "#222",
+  camadas.loc = L.geoJSON(null, {
+    pointToLayer: (f, ll) => L.circleMarker(ll, { renderer: rnd, radius: /Sede|Capital/.test(f.properties.t) ? 4 : 2.5, color: "#222",
       weight: 1, fillColor: "#fff", fillOpacity: 1 }),
     onEachFeature: (f, l) => l.bindTooltip(esc(f.properties.n), { permanent: /Sede|Capital/.test(f.properties.t),
       direction: "right", offset: [5, 0], className: "rot-loc" }) });
   // [camada, fonte] que só recebem a área do município selecionado
   AREA = [[camadas.perimetro, "perimetro_urbano"], [camadas.municipios, "municipios"], [camadas.snv, "snv_federal"],
-    [camadas.sre, "sre"], [dorCasco, "dor_linhas"], [dorCor, "dor_linhas"], [camadas.dorP, "dor_pontos"],
-    [pjBase, "dpj_linhas"], [pjTopo, "dpj_linhas"], [camadas.projP, "dpj_pontos"], [camadas.loc, "localidades"]];
+    [camadas.sre, "sre"], [pjBase, "dpj_linhas"], [pjTopo, "dpj_linhas"], [dorCasco, "dor_linhas"], [dorCor, "dor_linhas"],
+    [camadas.dorP, "dor_pontos"], [camadas.projP, "dpj_pontos"], [camadas.loc, "localidades"]];   // ordem = ordem de desenho
   AREA.forEach(([, n]) => GEO[n].features.forEach(f => f._bb = f._bb || caixa(f.geometry)));
 
+  // clique em qualquer ponto do mapa (também sobre rodovia, obra ou área ainda não carregada): acha o município
+  // pelo ponto, entre os 246. Modo Combinar (ou Ctrl/Shift + clique): soma/tira da seleção; senão abre só ele
+  mapa.on("click", e => {
+    const f = municipioEm(e.latlng); if (!f) return;
+    const c = f.properties.cod, oe = e.originalEvent || {};
+    if (COMB || oe.ctrlKey || oe.shiftKey || oe.metaKey) alterna(c);
+    else if (c !== atual || SEL.length > 1) seleciona(c);
+  });
   camadas.perimetro.addTo(mapa); camadas.municipios.addTo(mapa); camadas.snv.addTo(mapa); camadas.sre.addTo(mapa);
   camadas.projL.addTo(mapa); camadas.dorL.addTo(mapa); camadas.projP.addTo(mapa); camadas.dorP.addTo(mapa); camadas.loc.addTo(mapa);
   camadas.satelite = satelite;
@@ -386,19 +393,61 @@ function enquadra(b = BBOX) {
   mapa.invalidateSize();
   mapa.fitBounds([[b[1], b[0]], [b[3], b[2]]], { padding: [18, 18] });
 }
+function municipioEm(ll) {
+  const x = ll.lng, y = ll.lat;
+  const dentro = r => { let d = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+    const [xi, yi] = r[i], [xj, yj] = r[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) d = !d; } return d; };
+  return GEO.municipios.features.find(f => { const b = f._bb;
+    if (x < b[0] || x > b[2] || y < b[1] || y > b[3]) return false;
+    const ps = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+    return ps.some(p => dentro(p[0]) && !p.slice(1).some(dentro)); });
+}
 function destacaMunicipios(cods) {
   if (camadas.mascara) mapa.removeLayer(camadas.mascara);
   if (camadas.contorno) mapa.removeLayer(camadas.contorno);
   const fs = GEO.municipios.features.filter(x => cods.includes(x.properties.cod));
   const aneis = [];
   fs.forEach(f => (f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates)
-    .forEach(p => aneis.push(p[0].map(([x, y]) => [y, x]))));
-  // fora da seleção: fundo claro (como o recorte do atlas); dentro: satélite
-  camadas.mascara = L.polygon([[[-90, -180], [-90, 180], [90, 180], [90, -180]], ...aneis], {
-    pane: "mascara", stroke: false, ...estiloMascara(), interactive: false }).addTo(mapa);
-  camadas.contorno = L.geoJSON({ type: "FeatureCollection", features: fs }, { pane: "vias",
-    style: { color: "#ffd400", weight: 4, fill: false }, interactive: false }).addTo(mapa);
+    .forEach(p => aneis.push(p[0].map(([x, y]) => L.latLng(y, x)))));
+  // fora da seleção: fundo claro (como o recorte do atlas); dentro: satélite. Um ou vários municípios ficam
+  // com a mesma aparência: uma área só, contorno amarelo só por fora (sem a divisa entre os selecionados)
+  camadas.mascara = new AreaSel(aneis, "mascara").addTo(mapa);
+  camadas.contorno = new AreaSel(aneis, "contorno").addTo(mapa);
 }
+// desenho da área selecionada num canvas próprio, sem receber clique
+const AreaSel = L.Layer.extend({
+  initialize(aneis, tipo) { this._a = aneis; this._t = tipo; },
+  onAdd(m) {
+    this._c = L.DomUtil.create("canvas", "area-sel"); this._c.style.pointerEvents = "none";
+    m.getPane(this._t === "mascara" ? "mascara" : "vias").appendChild(this._c);
+    m.on("moveend zoomend resize viewreset", this.redesenha, this); m.on("zoomstart", this._esconde, this);
+    this.redesenha();
+  },
+  onRemove(m) {
+    L.DomUtil.remove(this._c);
+    m.off("moveend zoomend resize viewreset", this.redesenha, this); m.off("zoomstart", this._esconde, this);
+  },
+  _esconde() { this._c.style.visibility = "hidden"; },
+  redesenha() {
+    const m = this._map; if (!m) return;
+    const s = m.getSize(), r = window.devicePixelRatio || 1, c = this._c, P = 0.35;   // folga para o arrasto
+    const ox = P * s.x, oy = P * s.y, w = s.x + 2 * ox, h = s.y + 2 * oy;
+    c.width = Math.round(w * r); c.height = Math.round(h * r); c.style.width = w + "px"; c.style.height = h + "px";
+    L.DomUtil.setPosition(c, m.containerPointToLayerPoint([-ox, -oy]));
+    const x = c.getContext("2d"); x.setTransform(r, 0, 0, r, ox * r, oy * r);
+    const anel = a => { x.beginPath(); a.forEach((ll, i) => { const p = m.latLngToContainerPoint(ll); i ? x.lineTo(p.x, p.y) : x.moveTo(p.x, p.y); }); x.closePath(); };
+    if (this._t === "mascara") {
+      x.fillStyle = estiloMascara(); x.fillRect(-ox, -oy, w, h);
+    } else {
+      x.strokeStyle = "#ffd400"; x.lineWidth = 8; x.lineJoin = "round";
+      this._a.forEach(a => { anel(a); x.stroke(); });
+    }
+    x.globalCompositeOperation = "destination-out";       // recorta o interior de todos os selecionados
+    this._a.forEach(a => { anel(a); x.fill(); });
+    x.globalCompositeOperation = "source-over"; c.style.visibility = "";
+  }
+});
 function destacaTrecho(sre) {
   if (camadas.sel) mapa.removeLayer(camadas.sel);
   const fs = GEO.sre.features.filter(f => f.properties.sre === sre);
@@ -470,7 +519,7 @@ function agrega(cods) {
       `• Somas: Km, área e faixa de domínio somados; trechos, obras e projetos que cruzam a divisa entre municípios selecionados contam uma vez só (os Km de cada parte se somam).\n` +
       `• Índice de pavimentação, "após as obras" e densidade recalculados sobre o total da seleção (área somada: ${br(area, 2)} Km²).\n` +
       `• Totais e gráficos: só trechos estaduais principais; o quadro também lista os trechos coincidentes e federais.\n` +
-      `• Obras e projetos: cadastros de 12/11/2026; no mapa, o projeto aparece inteiro.`
+      `• Obras e projetos: cadastros de ${A.obras_data || "12/11/2026"}; no mapa, o projeto aparece inteiro.`
   };
 }
 
