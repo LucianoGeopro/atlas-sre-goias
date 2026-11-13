@@ -60,6 +60,16 @@ function aplicaTema(esc_) {
 $("#tema").onclick = () => aplicaTema(!escuro());
 aplicaTema(escuro());
 
+/* ---------------- capa (13/11/2026) ---------------- */
+// o atlas carrega por trás enquanto a capa está aberta
+function fechaCapa() {
+  document.documentElement.classList.remove("capa-aberta");
+  if (mapa) setTimeout(() => { mapa.invalidateSize(); if (atual) enquadra(); }, 50);
+}
+$("#capa-entrar").onclick = fechaCapa;
+$("#ver-capa").onclick = () => { document.documentElement.classList.add("capa-aberta"); window.scrollTo(0, 0); $("#capa-entrar").focus(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape" && document.documentElement.classList.contains("capa-aberta")) fechaCapa(); });
+
 /* ---------------- carga ---------------- */
 // cada mês fica em data/<AAAA-MM>/ (atlas.json, sre, obras DOR); as bases fixas ficam em data/
 const MENSAIS = new Set(["sre", "dor_linhas", "dor_pontos", "dpj_linhas", "dpj_pontos"]);
