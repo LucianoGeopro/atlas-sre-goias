@@ -274,3 +274,49 @@ html[data-tema=escuro], [data-tema=escuro] body { background: var(--fundo); colo
 [data-tema=escuro] .capa { background: #121416; }
 .busca #ver-capa { margin-left: auto; }
 .busca #ver-capa + .tema-btn { margin-left: 0; }
+
+/* seleção de vários municípios (13/11/2026) */
+.busca { flex-wrap: wrap; }
+.comb-btn { height: 38px; padding: 0 12px; font: bold 13px Arial, sans-serif; color: var(--brand); background: #fff;
+  border: 2px solid var(--brand); border-radius: 4px; cursor: pointer; white-space: nowrap; }
+.comb-btn:hover { background: var(--cartao); }
+.comb-btn.ativo { background: var(--brand); color: #fff; }
+.selecao { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 6px 0 2px;
+  border-top: 1px solid var(--grade); font-size: 13px; }
+.selecao[hidden] { display: none; }
+.sel-tit { font-weight: bold; color: var(--brand); }
+.chip { display: inline-flex; align-items: center; gap: 4px; background: #7b3fa0; color: #fff; border-radius: 14px;
+  padding: 3px 4px 3px 11px; font-weight: bold; font-size: 12.5px; }
+.chip:only-of-type { padding-right: 11px; }
+.chip button { border: 0; background: rgba(255,255,255,.25); color: #fff; width: 20px; height: 20px; border-radius: 50%;
+  cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }
+.chip button:hover { background: rgba(255,255,255,.5); }
+.sel-tot { margin-left: 6px; color: var(--ink2); }
+.sel-btn { font: 12.5px Arial, sans-serif; color: var(--brand); background: transparent; border: 1px solid var(--grade);
+  border-radius: 4px; padding: 4px 9px; cursor: pointer; }
+.sel-btn:hover { background: var(--cartao); }
+.cab-titulo.multi { font-size: clamp(18px, 2.2vw, 28px); line-height: 1.15; }
+.b-comp .caixa { margin-bottom: 10px; }
+.tab-comp td { white-space: nowrap; }
+.tab-comp td:first-child { font-weight: bold; text-align: left; }
+.cbar { position: relative; min-width: 110px; height: 18px; background: rgba(0,0,0,.05); }
+.cbar b { position: absolute; left: 0; top: 0; bottom: 0; opacity: .85; }
+.cbar span { position: relative; padding: 0 6px; line-height: 18px; font-weight: bold; color: #111; text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
+.comp-tot { font-size: 12.5px; color: var(--ink); line-height: 1.5; margin-top: 8px; }
+.comp-tot .g-sub { display: block; }
+[data-tema=escuro] .comb-btn { background: var(--sup2); }
+[data-tema=escuro] .comb-btn.ativo { background: var(--brand); color: #111; }
+[data-tema=escuro] .chip { background: #8f5ab8; }
+[data-tema=escuro] .cbar { background: rgba(255,255,255,.07); }
+[data-tema=escuro] .cbar span { color: #fff; text-shadow: 0 0 3px #000, 0 0 3px #000; }
+[data-tema=escuro] .selecao { border-top-color: var(--borda); }
+/* botões da seleção: sobrepõem o estilo dos botões de seta da barra */
+.busca .comb-btn { width: auto; height: 38px; font: bold 13px Arial, sans-serif; padding: 0 12px; }
+.busca .sel-btn { width: auto; height: auto; font: 12.5px Arial, sans-serif; padding: 4px 9px; white-space: nowrap; }
+.busca .chip button { width: 20px; height: 20px; font-size: 14px; padding: 0; border: 0; color: #fff; background: rgba(255,255,255,.25); }
+#comp-graf svg.graf { max-width: 100%; display: block; }
+.busca .comb-btn { color: var(--brand); background: #fff; border: 2px solid var(--brand); border-radius: 4px; line-height: 1; }
+.busca .comb-btn.ativo { background: var(--brand); color: #fff; }
+.busca .sel-btn { color: var(--brand); background: transparent; border: 1px solid var(--grade); border-radius: 4px; line-height: 1.2; }
+[data-tema=escuro] .busca .comb-btn { background: var(--sup2); }
+[data-tema=escuro] .busca .comb-btn.ativo { background: var(--brand); color: #111; }
