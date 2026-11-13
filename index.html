@@ -6,7 +6,7 @@
 <title>Atlas SRE Municípios – GOINFRA</title>
 <meta name="description" content="Sistema Rodoviário Estadual – SRE, atualizado mensalmente: situação da malha, indicadores, obras e projetos e composição da malha de cada município de Goiás.">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=14">
 <script>try { if (/tema=escuro/.test(location.search) || localStorage.getItem("atlas-tema") === "escuro") document.documentElement.dataset.tema = "escuro"; } catch (e) { if (/tema=escuro/.test(location.search)) document.documentElement.dataset.tema = "escuro"; }
 // capa: aparece no link principal; link direto de município (#código) ou ?capa=0 vai direto ao atlas
 if (!location.hash && !/capa=0/.test(location.search)) document.documentElement.classList.add("capa-aberta");</script>
@@ -27,22 +27,24 @@ if (!location.hash && !/capa=0/.test(location.search)) document.documentElement.
   <div class="busca-campo"><input id="q" type="search" placeholder="🔍 Buscar município…" autocomplete="off" aria-label="Buscar município"></div>
   <button id="prox" title="Próximo município" aria-label="Próximo município">›</button>
   <span class="busca-pag" id="pag"></span>
+  <button id="combinar" class="comb-btn" type="button" aria-pressed="false" title="Ligado: cada clique num município do mapa soma ou tira ele da seleção (atalho: Ctrl + clique)">＋ Combinar municípios</button>
   <select id="mes" class="mes-sel" aria-label="Mês da base do SRE" title="Mês da base do SRE" hidden></select>
   <button id="ver-capa" class="tema-btn" type="button" title="Ver a capa">Capa</button>
   <button id="tema" class="tema-btn" type="button" title="Alternar tema claro/escuro">🌙 Tema escuro</button>
+  <div id="selecao" class="selecao" hidden aria-live="polite"></div>
 </nav>
 
 <main class="pagina">
   <section class="col-esq">
     <div class="blk b-mapa">
-      <h2 class="sec">SITUAÇÃO ATUAL – RODOVIAS DO SRE NO MUNICÍPIO DE <span class="nome-up"></span></h2>
+      <h2 class="sec">SITUAÇÃO ATUAL – RODOVIAS DO SRE <span class="no-mun"></span></h2>
       <div id="mapa" class="mapa"></div>
       <div id="camadas" class="camadas" aria-label="Camadas e rótulos do mapa"></div>
     </div>
     <div class="blk b-obras obras">
       <div class="obras-graf caixa" id="g-dor"></div>
       <div class="obras-quadro">
-        <h2 class="sec">OBRAS E PROJETOS NO MUNICÍPIO DE <span class="nome-up"></span></h2>
+        <h2 class="sec">OBRAS E PROJETOS <span class="no-mun"></span></h2>
         <div class="tab-rolagem"><table class="tab" id="t-obras"></table></div>
       </div>
     </div>
@@ -67,8 +69,14 @@ if (!location.hash && !/capa=0/.test(location.search)) document.documentElement.
       <div class="caixa" id="g3"></div>
     </div>
     <div class="blk b-peso caixa" id="g-peso"></div>
+    <div class="blk b-comp" id="comp" hidden>
+      <h2 class="sec">COMPARAÇÃO ENTRE OS MUNICÍPIOS SELECIONADOS</h2>
+      <div class="caixa" id="comp-graf"></div>
+      <div class="tab-rolagem"><table class="tab tab-comp" id="t-comp"></table></div>
+      <div class="comp-tot" id="comp-tot"></div>
+    </div>
     <div class="blk b-sre">
-      <h2 class="sec sec-filtro"><span>SRE – QUADRO DE TRECHOS NO MUNICÍPIO DE <span class="nome-up"></span></span>
+      <h2 class="sec sec-filtro"><span>SRE – QUADRO DE TRECHOS <span class="no-mun"></span></span>
         <input id="filtro" class="filtro" placeholder="Filtrar trechos…" aria-label="Filtrar trechos"></h2>
       <div class="tab-rolagem"><table class="tab" id="t-sre"></table></div>
     </div>
@@ -84,6 +92,6 @@ if (!location.hash && !/capa=0/.test(location.search)) document.documentElement.
 <div id="carregando" class="carregando">Carregando o atlas…</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="app.js?v=11"></script>
+<script src="app.js?v=14"></script>
 </body>
 </html>
