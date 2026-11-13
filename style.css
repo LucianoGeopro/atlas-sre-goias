@@ -15,7 +15,7 @@ body { font-size: 13px; }
 .cab-logo img { display: block; height: 46px; max-width: 100%; }
 
 /* busca */
-.busca { position: sticky; top: 0; z-index: 1000; display: flex; gap: 8px; align-items: center; padding: 8px 24px;
+.busca { position: sticky; top: 0; z-index: 1100; display: flex; gap: 8px; align-items: center; padding: 8px 24px;
          background: #fff; border-bottom: 1px solid #dcdcd5; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
 .busca-campo { position: relative; flex: 0 1 420px; min-width: 0; display: flex; }
 .busca-campo input { flex: 1 1 auto !important; width: 100%; }
