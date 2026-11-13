@@ -28,7 +28,7 @@ const br = (v, d = 1) => Number(v).toLocaleString("pt-BR", { minimumFractionDigi
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const soma = o => Object.values(o || {}).reduce((a, b) => a + b, 0);
 
-let A, GEO = {}, LISTA = [], atual = null, mapa, camadas = {};
+let A, GEO = {}, LISTA = [], atual = null, mapa, camadas = {}, AREA = [];
 
 /* ---------------- dica (tooltip) para gráficos ---------------- */
 const dica = $("#dica");
@@ -119,13 +119,12 @@ function estiloSRE(f) {
 }
 function iniciaMapa() {
   mapa = L.map("mapa", { preferCanvas: true, zoomSnap: 0.25, attributionControl: true, zoomControl: false });
+  // 13/11/2026: sem filtro CSS nas imagens de satélite (o filtro em cada imagem deixava o arrasto pesado)
   const satelite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-    maxZoom: 18, attribution: "Imagem: Esri, Maxar, Earthstar Geographics", className: "satelite"
+    maxZoom: 18, attribution: "Imagem: Esri, Maxar, Earthstar Geographics"
   }).addTo(mapa);
   mapa.createPane("rotulos").style.zIndex = 620;
   mapa.getPane("rotulos").style.pointerEvents = "none";
-  const st = document.createElement("style"); st.textContent = ".satelite{filter:saturate(.6) brightness(1.02)}";
-  document.head.appendChild(st);
   mapa.createPane("mascara").style.zIndex = 390;
   mapa.createPane("vias").style.zIndex = 420;
   mapa.createPane("projetos").style.zIndex = 425;   // obra tem mais peso: projetos ficam por baixo das obras
@@ -134,9 +133,10 @@ function iniciaMapa() {
   mapa.createPane("topo").style.zIndex = 440;
   const rnd = L.canvas({ padding: 0.3 });
 
-  camadas.perimetro = L.geoJSON(GEO.perimetro_urbano, { renderer: rnd,
+  // 13/11/2026: as camadas nascem vazias e recebem só a área do município selecionado (preencheArea)
+  camadas.perimetro = L.geoJSON(null, { renderer: rnd,
     style: { color: "#f2d24b", weight: 1, fillColor: "#f2d24b", fillOpacity: 0.18 } });
-  camadas.municipios = L.geoJSON(GEO.municipios, { renderer: rnd,
+  camadas.municipios = L.geoJSON(null, { renderer: rnd,
     style: { color: "#ffffff", weight: 1, opacity: 0.8, fillOpacity: 0 },
     onEachFeature: (f, l) => {
       l.on("click", () => { if (f.properties.cod !== atual) seleciona(f.properties.cod); });
@@ -145,40 +145,43 @@ function iniciaMapa() {
   camadas.lotes = L.geoJSON(GEO.lotes, { renderer: rnd,
     style: { color: T_LT, weight: 2, fillColor: T_LT, fillOpacity: 0.08, dashArray: "6 4" },
     onEachFeature: (f, l) => l.bindTooltip("Lote " + f.properties.lote, { sticky: true }) });
-  camadas.snv = L.geoJSON(GEO.snv_federal, { renderer: rnd, pane: "vias",
+  camadas.snv = L.geoJSON(null, { renderer: rnd, pane: "vias",
     style: { color: "#33a02c", weight: 3 },
     onEachFeature: (f, l) => l.bindTooltip(`BR-${esc(f.properties.br)} · Federal`, { sticky: true }) });
-  camadas.sre = L.geoJSON(GEO.sre, { renderer: rnd, pane: "vias", style: estiloSRE,
+  camadas.sre = L.geoJSON(null, { renderer: rnd, pane: "vias", style: estiloSRE,
     onEachFeature: (f, l) => l.bindTooltip(`<b>GO-${esc(f.properties.go)}</b> · ${esc(f.properties.sre)}<br>${SIT[f.properties.sit]?.[0] || esc(f.properties.sit)}`, { sticky: true }) });
   // obras (DOR): contorno branco + cor por tipo (mesma simbologia do layout)
-  camadas.dorL = L.layerGroup([
-    L.geoJSON(GEO.dor_linhas, { renderer: rnd, pane: "obras", style: { color: "#ffffff", weight: 8, opacity: 0.9 }, interactive: false }),
-    L.geoJSON(GEO.dor_linhas, { renderer: rnd, pane: "obras",
+  const dorCasco = L.geoJSON(null, { renderer: rnd, pane: "obras", style: { color: "#ffffff", weight: 8, opacity: 0.9 }, interactive: false });
+  const dorCor = L.geoJSON(null, { renderer: rnd, pane: "obras",
       style: f => ({ color: DOR_COR[f.properties.intervencao] || "#0055d6", weight: 5 }),
-      onEachFeature: (f, l) => l.bindTooltip(`<b>Obra – ${esc(f.properties.intervencao)}</b><br>${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`, { sticky: true }) })
-  ]);
-  camadas.dorP = L.geoJSON(GEO.dor_pontos, { pane: "topo",
+      onEachFeature: (f, l) => l.bindTooltip(`<b>Obra – ${esc(f.properties.intervencao)}</b><br>${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`, { sticky: true }) });
+  camadas.dorL = L.layerGroup([dorCasco, dorCor]);
+  camadas.dorP = L.geoJSON(null, { pane: "topo",
     pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 7, color: "#ffffff", weight: 2, fillColor: DOR_PONT, fillOpacity: 1 }),
     onEachFeature: (f, l) => l.bindTooltip(`<b>Obra pontual – ${esc(f.properties.intervencao)}</b><br>${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`) });
   // projetos (DPJ): faixa colorida + linha branca no meio (contínua = Projeto; tracejada = Planejamento/Licitação)
   const dicaPJ = p => `<b>Projeto – ${esc(p.intervencao)} - ${esc(p.etapa)}</b><br>${esc(p.rodovia || "")} · ${esc(p.codigo || "")}`;
-  camadas.projL = L.layerGroup([
-    L.geoJSON(GEO.dpj_linhas, { renderer: rnd, pane: "projetos",
+  const pjBase = L.geoJSON(null, { renderer: rnd, pane: "projetos",
       style: f => ({ color: PJ_COR[f.properties.intervencao] || "#666666", weight: 7, opacity: 0.95, lineCap: "round" }),
-      onEachFeature: (f, l) => l.bindTooltip(dicaPJ(f.properties), { sticky: true }) }),
-    L.geoJSON(GEO.dpj_linhas, { renderer: rnd, pane: "projetos", interactive: false,
+      onEachFeature: (f, l) => l.bindTooltip(dicaPJ(f.properties), { sticky: true }) });
+  const pjTopo = L.geoJSON(null, { renderer: rnd, pane: "projetos", interactive: false,
       style: f => ({ color: "#ffffff", weight: 2.3, opacity: 1, dashArray: f.properties.etapa === "Projeto" ? null : "6 4.5",
-        lineCap: f.properties.etapa === "Projeto" ? "round" : "butt" }) })
-  ]);
-  camadas.projP = L.geoJSON(GEO.dpj_pontos, { pane: "projP",
+        lineCap: f.properties.etapa === "Projeto" ? "round" : "butt" }) });
+  camadas.projL = L.layerGroup([pjBase, pjTopo]);
+  camadas.projP = L.geoJSON(null, { pane: "projP",
     pointToLayer: (f, ll) => L.marker(ll, { pane: "projP", icon: L.icon({ iconUrl: (PJ_PONT[f.properties.cat] || PJ_PONT.Projeto)[0],
       iconSize: [22, 22], iconAnchor: [11, 11] }) }),
     onEachFeature: (f, l) => l.bindTooltip(`<b>Projeto pontual – ${esc(f.properties.cat)}</b><br>${esc(f.properties.intervencao)} · ${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`) });
-  camadas.loc = L.geoJSON(GEO.localidades, { pane: "topo",
+  camadas.loc = L.geoJSON(null, { pane: "topo",
     pointToLayer: (f, ll) => L.circleMarker(ll, { radius: /Sede|Capital/.test(f.properties.t) ? 4 : 2.5, color: "#222",
       weight: 1, fillColor: "#fff", fillOpacity: 1 }),
     onEachFeature: (f, l) => l.bindTooltip(esc(f.properties.n), { permanent: /Sede|Capital/.test(f.properties.t),
       direction: "right", offset: [5, 0], className: "rot-loc" }) });
+  // [camada, fonte] que só recebem a área do município selecionado
+  AREA = [[camadas.perimetro, "perimetro_urbano"], [camadas.municipios, "municipios"], [camadas.snv, "snv_federal"],
+    [camadas.sre, "sre"], [dorCasco, "dor_linhas"], [dorCor, "dor_linhas"], [camadas.dorP, "dor_pontos"],
+    [pjBase, "dpj_linhas"], [pjTopo, "dpj_linhas"], [camadas.projP, "dpj_pontos"], [camadas.loc, "localidades"]];
+  AREA.forEach(([, n]) => GEO[n].features.forEach(f => f._bb = f._bb || caixa(f.geometry)));
 
   camadas.perimetro.addTo(mapa); camadas.municipios.addTo(mapa); camadas.snv.addTo(mapa); camadas.sre.addTo(mapa);
   camadas.projL.addTo(mapa); camadas.dorL.addTo(mapa); camadas.projP.addTo(mapa); camadas.dorP.addTo(mapa); camadas.loc.addTo(mapa);
@@ -189,11 +192,7 @@ function iniciaMapa() {
   camadas.grade = L.layerGroup().addTo(mapa);        // grade de coordenadas
   GEO.lotes.features.forEach(f => camadas.rotLotes.addLayer(L.marker(centro(f.geometry), { interactive: false, pane: "rotulos",
     icon: L.divIcon({ className: "rot-lote", html: "Lote " + esc(f.properties.lote), iconSize: null }) })));
-  GEO.municipios.features.forEach(f => {
-    const mk = L.marker(centro(f.geometry), { interactive: false, pane: "rotulos",
-      icon: L.divIcon({ className: "rot-mun", html: esc(f.properties.nome), iconSize: null }) });
-    mk._cod = f.properties.cod; camadas.rotMun.addLayer(mk);
-  });
+  GEO.municipios.features.forEach(f => f._centro = centro(f.geometry));   // nomes: criados por área em preencheArea
   L.control.zoom({ position: "topleft", zoomInTitle: "Aproximar", zoomOutTitle: "Afastar" }).addTo(mapa);
   const Norte = L.Control.extend({ options: { position: "topright" },
     onAdd() { const d = L.DomUtil.create("div", "norte"); d.title = "Norte";
@@ -216,7 +215,32 @@ function iniciaMapa() {
     onAdd() { const b = L.DomUtil.create("button", "btn-mapa"); b.textContent = "⤢ Município"; b.title = "Voltar ao município";
       L.DomEvent.on(b, "click", e => { L.DomEvent.stop(e); enquadra(); }); return b; } });
   new Volta().addTo(mapa);
-  mapa.on("zoomend moveend", atualizaRotulos);
+  // rótulos só quando o zoom muda; arrastar só redesenha a grade (13/11/2026: arrasto ficava lento)
+  mapa.on("zoomend", atualizaRotulos);
+  mapa.on("moveend", () => { if (mapa.hasLayer(camadas.grade)) desenhaGrade(); });
+}
+
+/* ---------- desenhar só a área do município (13/11/2026: desempenho) ---------- */
+function caixa(g) {                        // [xmin, ymin, xmax, ymax] de qualquer geometria
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  const vai = c => { if (typeof c[0] === "number") { if (c[0] < x0) x0 = c[0]; if (c[0] > x1) x1 = c[0]; if (c[1] < y0) y0 = c[1]; if (c[1] > y1) y1 = c[1]; }
+    else c.forEach(vai); };
+  if (g && g.coordinates) vai(g.coordinates);
+  return [x0, y0, x1, y1];
+}
+function preencheArea(cod) {
+  // município + uma margem de meia largura em cada lado (pega os vizinhos e o que o enquadramento mostra)
+  const b = A.municipios[cod].bbox, mx = Math.max(b[2] - b[0], b[3] - b[1]) * 0.6;
+  const z = [b[0] - mx, b[1] - mx, b[2] + mx, b[3] + mx];
+  const dentroZ = bb => !(bb[2] < z[0] || bb[0] > z[2] || bb[3] < z[1] || bb[1] > z[3]);
+  AREA.forEach(([lyr, n]) => { lyr.clearLayers(); lyr.addData({ type: "FeatureCollection", features: GEO[n].features.filter(f => dentroZ(f._bb)) }); });
+  camadas.rotMun.clearLayers();
+  GEO.municipios.features.filter(f => dentroZ(f._bb)).forEach(f => {
+    const mk = L.marker(f._centro, { interactive: false, pane: "rotulos",
+      icon: L.divIcon({ className: "rot-mun", html: esc(f.properties.nome), iconSize: null }) });
+    mk._cod = f.properties.cod; camadas.rotMun.addLayer(mk);
+  });
+  faixaRot = null;                         // força atualizar os rótulos das localidades novas
 }
 
 /* ---------- rótulos, grade, painel de camadas e busca no mapa ---------- */
@@ -256,13 +280,18 @@ function montaRotulosVias(cod) {
   Object.entries(melhor).forEach(([t, v]) => camadas.rotVias.addLayer(L.marker([v.p[1], v.p[0]], { interactive: false, pane: "rotulos",
     icon: L.divIcon({ className: "rot-via rot-" + v.tipo, html: esc(t), iconSize: null }) })));
 }
+let faixaRot = null;
 function atualizaRotulos() {
   if (!mapa) return;
   const z = mapa.getZoom();
-  // localidades: sedes a partir do zoom 9, demais a partir do 11
-  camadas.loc.eachLayer(l => { const t = l.getTooltip(); if (!t) return;
-    const sede = /Sede|Capital/.test(l.feature.properties.t);
-    (ROT.loc && mapa.hasLayer(camadas.loc) && z >= (sede ? 9 : 11)) ? (t.options.permanent = true, l.openTooltip()) : l.closeTooltip(); });
+  // localidades: sedes a partir do zoom 9, demais a partir do 11 — só mexe quando muda a faixa de zoom ou as opções
+  const faixa = [z >= 9, z >= 11, ROT.loc, mapa.hasLayer(camadas.loc)].join();
+  if (faixa !== faixaRot) {
+    faixaRot = faixa;
+    camadas.loc.eachLayer(l => { const t = l.getTooltip(); if (!t) return;
+      const sede = /Sede|Capital/.test(l.feature.properties.t);
+      (ROT.loc && mapa.hasLayer(camadas.loc) && z >= (sede ? 9 : 11)) ? (t.options.permanent = true, l.openTooltip()) : l.closeTooltip(); });
+  }
   ROT.vias ? mapa.addLayer(camadas.rotVias) : mapa.removeLayer(camadas.rotVias);
   ROT.lotes ? mapa.addLayer(camadas.rotLotes) : mapa.removeLayer(camadas.rotLotes);
   if (ROT.mun && z >= 8) { mapa.addLayer(camadas.rotMun);
@@ -374,7 +403,7 @@ function seleciona(cod, hist = true) {
   $("#q").value = ""; $("#q").placeholder = m.nome + " — buscar outro município…";
   $("#pag").textContent = `Página ${m.ordem} de ${LISTA.length}`;
   if (camadas.sel) { mapa.removeLayer(camadas.sel); camadas.sel = null; }
-  destacaMunicipio(cod); montaRotulosVias(cod); enquadra(); atualizaRotulos();
+  preencheArea(cod); destacaMunicipio(cod); montaRotulosVias(cod); enquadra(); atualizaRotulos();
   cartoes(m); grafSituacao(m); grafRodovia(m); grafUrbano(m); grafPeso(cod, m); grafTipoObra(m);
   tabelaObras(m); tabelaSRE(m);
   $("#notas").textContent = (m.notas || "").replace(/\\n/g, "\n");
