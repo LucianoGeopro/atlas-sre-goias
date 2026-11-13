@@ -9,7 +9,18 @@ const SIT = {                                   // cores dos gráficos (graficos
 const ORD = Object.keys(SIT);
 const BRANCO = new Set(["PAV", "DUP", "EOD", "PLA"]);
 const DOR_COR = { "Duplicação": "#1a00f4", "Pavimentação": "#0055d6", "Restauração": "#00c8ec" };
-const PLURAL = { "Ponte": "pontes", "Viaduto": "viadutos", "Bueiro": "bueiros" };
+const DOR_PONT = "#4e88b9";
+// projetos (DPJ): padrão SIPLAWEB — cor pela intervenção; etapa Projeto = linha branca contínua no meio,
+// Planejamento/Licitação = linha branca tracejada (mesma simbologia do layout 04)
+const PJ_COR = { "Duplicação": "#001efe", "Melhoria Funcional": "#ff9601", "Pavimentação": "#dc0101", "PRAD": "#666666",
+  "Restauração": "#10a000", "Sinalização": "#666666" };
+const PJ_CLASSES = [["Duplicação", "Licitação"], ["Duplicação", "Planejamento"], ["Duplicação", "Projeto"],
+  ["Melhoria Funcional", "Projeto"], ["Pavimentação", "Licitação"], ["Pavimentação", "Planejamento"], ["Pavimentação", "Projeto"],
+  ["PRAD", "Planejamento"], ["Restauração", "Planejamento"], ["Restauração", "Projeto"], ["Sinalização", "Planejamento"]];
+const PJ_PONT = { "Ponte em projeto": ["img/placaoaeprojeto.svg", "#00ffff", "#111"], "Em planejamento": ["img/placaplanejamento.svg", "#c8ab37", "#fff"],
+  "Projeto": ["img/placaprojeto.svg", "#007eff", "#fff"], "Obra": ["img/placaobra.svg", "#ff6600", "#fff"] };
+const PLURAL = { "Ponte": "pontes", "Viaduto": "viadutos", "Bueiro": "bueiros", "Duplicação": "duplicações", "PRAD": "PRADs" };
+const km2 = v => br(v, 2) + " Km";                 // Km sempre com 2 casas (layout 04)
 const T_MU = "#7b3fa0", T_LT = "#138a72", T_GO = "#2f6db5";
 
 const $ = s => document.querySelector(s);
@@ -51,14 +62,16 @@ aplicaTema(escuro());
 
 /* ---------------- carga ---------------- */
 // cada mês fica em data/<AAAA-MM>/ (atlas.json, sre, obras DOR); as bases fixas ficam em data/
-const MENSAIS = new Set(["sre", "dor_linhas", "dor_pontos"]);
+const MENSAIS = new Set(["sre", "dor_linhas", "dor_pontos", "dpj_linhas", "dpj_pontos"]);
+const VAZIO = { type: "FeatureCollection", features: [] };
 async function carrega() {
   const meses = await fetch("data/meses.json", { cache: "no-cache" }).then(r => r.json());
   const pedido = new URLSearchParams(location.search).get("mes");
   const MES = (meses.find(m => m.id === pedido) || meses[0]).id;
-  const nomes = ["municipios", "sre", "dor_linhas", "dor_pontos", "perimetro_urbano", "localidades", "snv_federal", "lotes"];
+  const nomes = ["municipios", "sre", "dor_linhas", "dor_pontos", "dpj_linhas", "dpj_pontos", "perimetro_urbano", "localidades", "snv_federal", "lotes"];
   const [atlas, ...geos] = await Promise.all([fetch(`data/${MES}/atlas.json`).then(r => r.json()),
-    ...nomes.map(n => fetch(MENSAIS.has(n) ? `data/${MES}/${n}.geojson` : `data/${n}.geojson`).then(r => r.json()))]);
+    ...nomes.map(n => fetch(MENSAIS.has(n) ? `data/${MES}/${n}.geojson` : `data/${n}.geojson`)
+      .then(r => r.ok ? r.json() : VAZIO).catch(() => VAZIO))]);   // mês sem projetos: camada vazia
   A = atlas; nomes.forEach((n, i) => GEO[n] = geos[i]);
   textosDoMes(meses, MES);
   LISTA = Object.entries(A.municipios).sort((a, b) => a[1].ordem - b[1].ordem).map(([cod]) => cod);
@@ -115,7 +128,9 @@ function iniciaMapa() {
   document.head.appendChild(st);
   mapa.createPane("mascara").style.zIndex = 390;
   mapa.createPane("vias").style.zIndex = 420;
+  mapa.createPane("projetos").style.zIndex = 425;   // obra tem mais peso: projetos ficam por baixo das obras
   mapa.createPane("obras").style.zIndex = 430;
+  mapa.createPane("projP").style.zIndex = 436;
   mapa.createPane("topo").style.zIndex = 440;
   const rnd = L.canvas({ padding: 0.3 });
 
@@ -135,16 +150,30 @@ function iniciaMapa() {
     onEachFeature: (f, l) => l.bindTooltip(`BR-${esc(f.properties.br)} · Federal`, { sticky: true }) });
   camadas.sre = L.geoJSON(GEO.sre, { renderer: rnd, pane: "vias", style: estiloSRE,
     onEachFeature: (f, l) => l.bindTooltip(`<b>GO-${esc(f.properties.go)}</b> · ${esc(f.properties.sre)}<br>${SIT[f.properties.sit]?.[0] || esc(f.properties.sit)}`, { sticky: true }) });
-  // obras lineares da DOR: contorno branco + cor por tipo (mesma simbologia do layout)
+  // obras (DOR): contorno branco + cor por tipo (mesma simbologia do layout)
   camadas.dorL = L.layerGroup([
     L.geoJSON(GEO.dor_linhas, { renderer: rnd, pane: "obras", style: { color: "#ffffff", weight: 8, opacity: 0.9 }, interactive: false }),
     L.geoJSON(GEO.dor_linhas, { renderer: rnd, pane: "obras",
       style: f => ({ color: DOR_COR[f.properties.intervencao] || "#0055d6", weight: 5 }),
-      onEachFeature: (f, l) => l.bindTooltip(`<b>Obra DOR – ${esc(f.properties.intervencao)}</b><br>${esc(f.properties.rodovia || "")} ${esc(f.properties.codigo || "")}`, { sticky: true }) })
+      onEachFeature: (f, l) => l.bindTooltip(`<b>Obra – ${esc(f.properties.intervencao)}</b><br>${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`, { sticky: true }) })
   ]);
   camadas.dorP = L.geoJSON(GEO.dor_pontos, { pane: "topo",
-    pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 7, color: "#ffffff", weight: 2, fillColor: "#4e88b9", fillOpacity: 1 }),
-    onEachFeature: (f, l) => l.bindTooltip(`<b>Obra DOR – ${esc(f.properties.intervencao)}</b><br>${esc(f.properties.rodovia || "")} ${esc(f.properties.codigo || "")}`) });
+    pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 7, color: "#ffffff", weight: 2, fillColor: DOR_PONT, fillOpacity: 1 }),
+    onEachFeature: (f, l) => l.bindTooltip(`<b>Obra pontual – ${esc(f.properties.intervencao)}</b><br>${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`) });
+  // projetos (DPJ): faixa colorida + linha branca no meio (contínua = Projeto; tracejada = Planejamento/Licitação)
+  const dicaPJ = p => `<b>Projeto – ${esc(p.intervencao)} - ${esc(p.etapa)}</b><br>${esc(p.rodovia || "")} · ${esc(p.codigo || "")}`;
+  camadas.projL = L.layerGroup([
+    L.geoJSON(GEO.dpj_linhas, { renderer: rnd, pane: "projetos",
+      style: f => ({ color: PJ_COR[f.properties.intervencao] || "#666666", weight: 7, opacity: 0.95, lineCap: "round" }),
+      onEachFeature: (f, l) => l.bindTooltip(dicaPJ(f.properties), { sticky: true }) }),
+    L.geoJSON(GEO.dpj_linhas, { renderer: rnd, pane: "projetos", interactive: false,
+      style: f => ({ color: "#ffffff", weight: 2.3, opacity: 1, dashArray: f.properties.etapa === "Projeto" ? null : "6 4.5",
+        lineCap: f.properties.etapa === "Projeto" ? "round" : "butt" }) })
+  ]);
+  camadas.projP = L.geoJSON(GEO.dpj_pontos, { pane: "projP",
+    pointToLayer: (f, ll) => L.marker(ll, { pane: "projP", icon: L.icon({ iconUrl: (PJ_PONT[f.properties.cat] || PJ_PONT.Projeto)[0],
+      iconSize: [22, 22], iconAnchor: [11, 11] }) }),
+    onEachFeature: (f, l) => l.bindTooltip(`<b>Projeto pontual – ${esc(f.properties.cat)}</b><br>${esc(f.properties.intervencao)} · ${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`) });
   camadas.loc = L.geoJSON(GEO.localidades, { pane: "topo",
     pointToLayer: (f, ll) => L.circleMarker(ll, { radius: /Sede|Capital/.test(f.properties.t) ? 4 : 2.5, color: "#222",
       weight: 1, fillColor: "#fff", fillOpacity: 1 }),
@@ -152,7 +181,7 @@ function iniciaMapa() {
       direction: "right", offset: [5, 0], className: "rot-loc" }) });
 
   camadas.perimetro.addTo(mapa); camadas.municipios.addTo(mapa); camadas.snv.addTo(mapa); camadas.sre.addTo(mapa);
-  camadas.dorL.addTo(mapa); camadas.dorP.addTo(mapa); camadas.loc.addTo(mapa);
+  camadas.projL.addTo(mapa); camadas.dorL.addTo(mapa); camadas.projP.addTo(mapa); camadas.dorP.addTo(mapa); camadas.loc.addTo(mapa);
   camadas.satelite = satelite;
   camadas.rotVias = L.layerGroup().addTo(mapa);      // GO-xxx / BR-xxx
   camadas.rotMun = L.layerGroup().addTo(mapa);       // nomes dos municípios
@@ -266,7 +295,7 @@ function desenhaGrade() {
 }
 function painelCamadas() {
   const itens = [["Camadas"],
-    ["sre", "SRE – " + A.rotulo], ["dorL", "Obras DOR – lineares"], ["dorP", "Obras DOR – pontuais"],
+    ["sre", "SRE – " + A.rotulo], ["dorL", "Obras"], ["dorP", "Obras pontuais"], ["projL", "Projetos"], ["projP", "Projetos pontuais"],
     ["snv", "SNV – rodovias federais"], ["loc", "Localidades"], ["perimetro", "Perímetro urbano"],
     ["municipios", "Limites municipais"], ["lotes", "Lotes de manutenção"], ["grade", "Grade de coordenadas"],
     ["satelite", "Imagem de satélite"],
@@ -346,15 +375,14 @@ function seleciona(cod, hist = true) {
   $("#pag").textContent = `Página ${m.ordem} de ${LISTA.length}`;
   if (camadas.sel) { mapa.removeLayer(camadas.sel); camadas.sel = null; }
   destacaMunicipio(cod); montaRotulosVias(cod); enquadra(); atualizaRotulos();
-  cartoes(m); grafSituacao(m); grafRodovia(m); grafUrbano(m); grafPeso(cod, m); grafDor(m);
+  cartoes(m); grafSituacao(m); grafRodovia(m); grafUrbano(m); grafPeso(cod, m); grafTipoObra(m);
   tabelaObras(m); tabelaSRE(m);
-  $("#notas").textContent = (m.notas || "").replace(/\\n/g, "\n") +
-    "\n• Obras DOR: cópia do cadastro de obras do DOR (atlas_dor.gpkg). Linhas recortadas pelo limite municipal (km sobre o GRS80); uma obra que cruza a divisa conta nos dois municípios.";
+  $("#notas").textContent = (m.notas || "").replace(/\\n/g, "\n");
 }
 
 /* ---------------- cartões ---------------- */
 function cartoes(m) {
-  const tit = ["EXTENSÃO NO MUNICÍPIO", "ÍNDICE DE PAVIMENTAÇÃO", "APÓS AS OBRAS (EOP)", "DENSIDADE RODOVIÁRIA", "FAIXA DE DOMÍNIO"];
+  const tit = ["EXTENSÃO NO MUNICÍPIO", "ÍNDICE DE PAVIMENTAÇÃO", "APÓS AS OBRAS DE PAVIMENTAÇÃO", "DENSIDADE RODOVIÁRIA", "FAIXA DE DOMÍNIO"];
   $("#cartoes").innerHTML = tit.map((t, i) => `<div class="cartao">
       <div class="cartao-tit">${t}</div><img src="img/c${i + 1}.svg" alt="">
       <div class="cartao-val">${esc(m[`c${i + 1}_val`])}</div>
@@ -368,9 +396,9 @@ function textW(t, fs) { return String(t).length * fs * 0.55; }
 
 function barrasH(itens, tot) {             // [{rot, v, cor, tip}]
   const vmax = Math.max(...itens.map(i => i.v)), lw = Math.max(...itens.map(i => textW(i.rot, 11))) + 8;
-  const W = 300, bh = 18, gap = 8, H = itens.length * (bh + gap) + 18, x0 = lw, bw = (W - x0) / 1.6;
+  const W = 300, bh = 18, gap = 8, H = itens.length * (bh + gap) + 18, x0 = lw, bw = (W - x0) / 2.1;  // folga p/ "000,00 Km (00,0%)"
   let s = `<svg class="graf" viewBox="0 0 ${W} ${H}">`;
-  for (const t of ticks(vmax * 1.6)) {
+  for (const t of ticks(vmax * 2.1)) {
     const x = x0 + bw * t / vmax; if (x > W) continue;
     s += `<line x1="${x}" x2="${x}" y1="0" y2="${H - 16}" stroke="#c4c3bb" stroke-width=".6"/>` +
          `<text x="${x}" y="${H - 4}" font-size="9" fill="#898781" text-anchor="middle">${br(t, t >= 1 || t === 0 ? 0 : 1)}</text>`;
@@ -379,7 +407,7 @@ function barrasH(itens, tot) {             // [{rot, v, cor, tip}]
     const y = i * (bh + gap) + 2, w = Math.max(1, bw * it.v / vmax);
     s += `<text x="${x0 - 6}" y="${y + bh / 2 + 4}" font-size="11" fill="#52514e" text-anchor="end">${esc(it.rot)}</text>` +
          `<rect class="hov" x="${x0}" y="${y}" width="${w}" height="${bh}" fill="${it.cor}" data-tip="${esc(it.tip)}"/>` +
-         `<text x="${x0 + w + 5}" y="${y + bh / 2 + 4}" font-size="10.5" fill="#0b0b0b">${br(it.v)} km${tot ? `  (${br(100 * it.v / tot)}%)` : ""}</text>`;
+         `<text x="${x0 + w + 5}" y="${y + bh / 2 + 4}" font-size="10.5" fill="#0b0b0b">${km2(it.v)}${tot ? `  (${br(100 * it.v / tot)}%)` : ""}</text>`;
   });
   return s + `<line x1="${x0}" x2="${x0}" y1="0" y2="${H - 16}" stroke="#8f8e86" stroke-width=".8"/></svg>`;
 }
@@ -404,12 +432,12 @@ function empilhado(linhas) {               // [{rot, r:{sit:km}}]
       const v = l.r[c]; if (!v) continue;
       const w = bw * v / vmax;
       s += `<rect class="hov" x="${x}" y="${y}" width="${w}" height="${bh}" fill="${SIT[c][1]}" stroke="#fff" stroke-width=".8"
-              data-tip="<b>${esc(l.rot)}</b><br>${SIT[c][0]}: ${br(v, 2)} km (${br(100 * v / tots[i])}%)"/>`;
-      if (w / bw > 0.13) s += `<text x="${x + w / 2}" y="${y + bh / 2 + 3.5}" font-size="9.5" text-anchor="middle" pointer-events="none"
-              fill="${BRANCO.has(c) ? "#fff" : "#0b0b0b"}">${br(v, 0)}</text>`;
+              data-tip="<b>${esc(l.rot)}</b><br>${SIT[c][0]}: ${km2(v)} (${br(100 * v / tots[i])}%)"/>`;
+      if (w > textW(br(v, 2), 9.5) + 6) s += `<text x="${x + w / 2}" y="${y + bh / 2 + 3.5}" font-size="9.5" text-anchor="middle" pointer-events="none"
+              fill="${BRANCO.has(c) ? "#fff" : "#0b0b0b"}">${br(v, 2)}</text>`;
       x += w;
     }
-    s += `<text x="${x + 5}" y="${y + bh / 2 + 4}" font-size="10.5" fill="#0b0b0b">${br(tots[i])} km</text>`;
+    s += `<text x="${x + 5}" y="${y + bh / 2 + 4}" font-size="10.5" fill="#0b0b0b">${km2(tots[i])}</text>`;
   });
   s += `<line x1="${x0}" x2="${x0}" y1="0" y2="${H - 16}" stroke="#8f8e86" stroke-width=".8"/></svg>`;
   const usados = ORD.filter(c => linhas.some(l => l.r[c]));
@@ -419,39 +447,46 @@ function grafSituacao(m) {
   const S = Object.fromEntries(Object.entries(m.situacao).filter(([, v]) => v > 0)), tot = soma(S);
   if (!tot) { $("#g1").innerHTML = cab("Extensão por situação") + `<div class="g-vazio">${SEM}</div>`; return; }
   const it = Object.keys(S).sort((a, b) => S[b] - S[a]).map(c => ({ rot: SIT[c][0], v: S[c], cor: SIT[c][1],
-    tip: `<b>${SIT[c][0]}</b><br>${br(S[c], 2)} km · ${br(100 * S[c] / tot)}% da malha estadual no município` }));
-  $("#g1").innerHTML = cab("Extensão por situação", `km no município e % do total (${br(tot, 2)} km)`) + barrasH(it, tot);
+    tip: `<b>${SIT[c][0]}</b><br>${km2(S[c])} · ${br(100 * S[c] / tot)}% da malha estadual no município` }));
+  $("#g1").innerHTML = cab("Extensão por situação", `Km no município e % do total (${km2(tot)})`) + barrasH(it, tot);
 }
 function grafRodovia(m) {
   const gos = Object.entries(m.go_situacao).filter(([, r]) => soma(r) > 0).sort((a, b) => soma(b[1]) - soma(a[1]));
   $("#g2").innerHTML = !gos.length ? cab("Extensão por rodovia e situação") + `<div class="g-vazio">${SEM}</div>` :
-    cab("Extensão por rodovia e situação", "km no município") + empilhado(gos.map(([k, r]) => ({ rot: k, r })));
+    cab("Extensão por rodovia e situação", "Km no município") + empilhado(gos.map(([k, r]) => ({ rot: k, r })));
 }
 function grafUrbano(m) {
   const ur = ["Rural", "Urbano"].filter(k => soma(m.urbano_situacao[k]) > 0).map(k => ({ rot: k, r: m.urbano_situacao[k] }));
   $("#g3").innerHTML = !ur.length ? cab("Trechos urbanos × rurais") + `<div class="g-vazio">${SEM}</div>` :
-    cab("Trechos urbanos × rurais", "km no município, por situação (perímetro urbano)") + empilhado(ur);
+    cab("Trechos urbanos × rurais", "Km no município, por situação (perímetro urbano)") + empilhado(ur);
 }
-function grafDor(m) {
-  const d = m.dor || {}, lin = d.lineares || {}, pon = d.pontuais || {};
-  const tp = !Object.keys(pon).length ? "Obras pontuais: nenhuma no município" :
-    "Obras pontuais: " + Object.entries(pon).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${n} ${n > 1 ? (PLURAL[k] || k.toLowerCase()) : k.toLowerCase()}`).join(" · ");
-  let h = cab("Obras DOR por tipo", "obras e km no município");
-  if (!Object.keys(lin).length && !Object.keys(pon).length) { $("#g-dor").innerHTML = h + `<div class="g-vazio">Sem obras da DOR<br>no município</div>`; return; }
-  const ks = Object.keys(lin).sort((a, b) => lin[b].km - lin[a].km), vmax = Math.max(1e-9, ...ks.map(k => lin[k].km));
-  if (ks.length) {
-    const W = 220, bh = 14, H = ks.length * 36;
+// "Tipo de Obra" (igual ao gráfico do layout 04): barras "Obra – X" e "Projeto – X" + texto dos pontuais
+function grafTipoObra(m) {
+  const t = m.tipo_obra || {}, O = t.Obra || { lineares: {}, pontuais: {} }, P = t.Projeto || { lineares: {}, pontuais: {} };
+  const txtP = (titulo, pon) => titulo + ": " + Object.entries(pon).sort((a, b) => b[1] - a[1])
+    .map(([k, n]) => `${n} ${n > 1 ? (PLURAL[k] || k.toLowerCase() + "s") : k.toLowerCase()}`).join(" · ");
+  let h = cab("Tipo de Obra", "obras e projetos: quantidade e Km no município");
+  const barras = [
+    ...Object.entries(O.lineares).sort((a, b) => b[1].km - a[1].km).map(([k, v]) => ({ rot: "Obra – " + k, n: v.n, km: v.km, cor: DOR_COR[k] || "#0055d6", nat: "obra" })),
+    ...Object.entries(P.lineares).sort((a, b) => b[1].km - a[1].km).map(([k, v]) => ({ rot: "Projeto – " + k, n: v.n, km: v.km, cor: PJ_COR[k] || "#666666", nat: "projeto" }))];
+  const temP = Object.keys(O.pontuais).length || Object.keys(P.pontuais).length;
+  if (!barras.length && !temP) { $("#g-dor").innerHTML = h + `<div class="g-vazio">Sem obras e projetos<br>para o município</div>`; return; }
+  if (barras.length) {
+    const vmax = Math.max(1e-9, ...barras.map(b => b.km)), W = 190, bh = 12, H = barras.length * 33;
     h += `<svg class="graf" viewBox="0 0 ${W} ${H}">`;
-    ks.forEach((k, i) => {
-      const y = i * 36, w = Math.max(2, (W * 0.55) * lin[k].km / vmax), v = lin[k];
-      h += `<text x="0" y="${y + 11}" font-size="11" fill="#52514e">${esc(k)}</text>` +
-           `<rect class="hov" x="0" y="${y + 15}" width="${w}" height="${bh}" fill="${DOR_COR[k] || "#0055d6"}" stroke="#fff" stroke-width="1.4"
-              data-tip="<b>${esc(k)}</b><br>${v.obras} obra${v.obras > 1 ? "s" : ""} · ${br(v.km, 2)} km no município"/>` +
-           `<text x="${w + 5}" y="${y + 26}" font-size="10" fill="#0b0b0b">${v.obras} obra${v.obras > 1 ? "s" : ""} · ${br(v.km)} km</text>`;
+    barras.forEach((b, i) => {
+      const y = i * 33, w = Math.max(2, (W * 0.42) * b.km / vmax), q = `${b.n} ${b.nat}${b.n > 1 ? "s" : ""}`;
+      h += `<text x="0" y="${y + 11}" font-size="11" fill="#52514e">${esc(b.rot)}</text>` +
+           `<rect class="hov" x="0" y="${y + 15}" width="${w}" height="${bh}" fill="${b.cor}" stroke="#fff" stroke-width="1.2"
+              data-tip="<b>${esc(b.rot)}</b><br>${q} · ${km2(b.km)} no município"/>` +
+           `<text x="${w + 4}" y="${y + 24.5}" font-size="10" fill="#0b0b0b">${q} · ${km2(b.km)}</text>`;
     });
     h += `</svg>`;
   }
-  $("#g-dor").innerHTML = h + `<div class="g-sub" style="margin-top:6px">${esc(tp)}</div>`;
+  const rod = [];
+  if (Object.keys(O.pontuais).length) rod.push(txtP("Obras pontuais", O.pontuais));
+  if (Object.keys(P.pontuais).length) rod.push(txtP("Projetos pontuais", P.pontuais));
+  $("#g-dor").innerHTML = h + rod.map(r => `<div class="g-sub" style="margin-top:4px">${esc(r)}</div>`).join("");
 }
 
 /* --- comparativo: peso da malha do município no próprio município, no(s) lote(s) e em Goiás --- */
@@ -481,37 +516,36 @@ function grafPeso(cod, m) {
   const ml = m.peso || {}, ms = {};
   Object.values(ml).forEach(r => Object.entries(r).forEach(([s, v]) => ms[s] = (ms[s] || 0) + v));
   const tm = soma(ms);
-  let h = cab("Comparativo da composição da malha", "peso da malha do município em cada situação (sem planejadas)");
+  let h = cab("Comparativo da composição da malha", "Km por situação (estaduais principais)");
   if (!tm) { $("#g-peso").innerHTML = h + `<div class="g-vazio">${SEM}</div>`; return; }
   const lts = Object.keys(ml).sort((a, b) => soma(ml[b]) - soma(ml[a]));
   const GO = A.goias.situacao, GOt = A.goias.total, LT = A.lotes;
   const sits = ["PAV", "DUP", "EOD", "EOP", "IMP", "LEN"];
   const rl = lts.length === 1 ? "Lote " + lts[0] : "Lotes " + lts.slice(0, -1).join(", ") + " e " + lts[lts.length - 1];
-  const cel = (v, cor, tc, tip, bold) => `<td class="grp"><div class="cel"><span style="color:${v > 0 ? tc : "#898781"};${bold ? "font-weight:bold" : ""}">${pc(v)}</span>
-      <div class="bar hov" data-tip="${esc(tip)}"><b style="width:${Math.min(100, v)}%;background:${cor}"></b></div></div></td>`;
-  let t = `<div class="tab-peso"><table><thead><tr><th>Situação</th><th class="grp" style="color:${T_MU};text-align:right">km no<br>município</th>
-     <th style="color:${T_MU}">% da malha do<br>município</th>${lts.map(k => `<th class="grp" style="color:${T_LT}">% do<br>Lote ${esc(k)}</th>`).join("")}
-     <th class="grp" style="color:${T_GO}">% de<br>Goiás</th></tr></thead><tbody>`;
-  for (const s of sits) {
-    const km = ms[s] || 0, nm = SIT[s][0], cor = SIT[s][1];
-    t += `<tr><td class="${km ? "" : "zero"}"><i class="sw" style="background:${cor}"></i>${nm}</td>
-      <td class="km grp" style="color:${km ? T_MU : "#898781"}">${br(km)}</td>` +
-      cel(100 * km / tm, cor, T_MU, `<b>${nm}</b><br>${br(km, 2)} km = ${pc(100 * km / tm)} da malha do município (${br(tm, 2)} km)`).replace('<td class="grp">', "<td>") +
-      lts.map(k => { const lk = LT[k]?.[s] || 0, mk = ml[k]?.[s] || 0, v = lk ? 100 * mk / lk : 0;
-        return cel(v, cor, T_LT, `<b>${nm} – Lote ${k}</b><br>${br(mk, 2)} km do município ÷ ${br(lk, 2)} km do lote = ${pc(v)}`); }).join("") +
-      cel(GO[s] ? 100 * km / GO[s] : 0, cor, T_GO, `<b>${nm} – Goiás</b><br>${br(km, 2)} km do município ÷ ${br(GO[s] || 0, 2)} km do Estado = ${pc(GO[s] ? 100 * km / GO[s] : 0)}`) + `</tr>`;
-  }
-  t += `<tr class="tot"><td>Total</td><td class="km grp" style="color:${T_MU}">${br(tm)}</td>` +
-    cel(100, "#6b6a66", T_MU, `Malha estadual do município: ${br(tm, 2)} km`, true).replace('<td class="grp">', "<td>") +
-    lts.map(k => { const v = 100 * soma(ml[k]) / soma(LT[k]); return cel(v, "#6b6a66", T_LT, `<b>Lote ${k}</b><br>${br(soma(ml[k]), 2)} km do município ÷ ${br(soma(LT[k]), 2)} km do lote = ${pc(v)}`, true); }).join("") +
-    cel(100 * tm / GOt, "#6b6a66", T_GO, `<b>Goiás</b><br>${br(tm, 2)} km do município ÷ ${br(GOt, 2)} km do Estado = ${pc(100 * tm / GOt)}`, true) + `</tr>`;
-  t += `<tr class="ext"><td>Extensão total</td><td class="km grp" style="color:${T_MU}">${br(tm)} km</td><td style="color:${T_MU};font-weight:normal">malha do município</td>` +
-    lts.map(k => `<td class="grp" style="color:${T_LT}">Lote ${esc(k)}: ${br(soma(LT[k]))} km</td>`).join("") +
-    `<td class="grp" style="color:${T_GO}">Goiás: ${br(GOt)} km</td></tr></tbody></table></div>`;
-  const nm = m.nome.length <= 22 ? m.nome : m.nome.slice(0, 21) + "…";
-  h += `<div class="peso"><div class="peso-mapa">${miniMapa(cod, lts)}
-        <div class="peso-rot"><span style="color:${T_MU}">${esc(nm)}</span><br><span style="color:${T_LT}">${esc(rl)}</span><br><span style="color:${T_GO}">Goiás</span></div></div>${t}</div>`;
-  $("#g-peso").innerHTML = h;
+  // barras em Km (layout 04): cada linha mostra a composição da própria malha; extensão total à direita
+  const linhas = [{ rot: m.nome, r: ms, cor: T_MU }, ...lts.map(k => ({ rot: "Lote " + k, r: LT[k] || {}, cor: T_LT })),
+    { rot: "Goiás", r: GO, cor: T_GO }];
+  const W = 640, x0 = 150, xT = W - 92, bw = xT - x0 - 10, bh = 22, gap = 22;
+  let s = `<svg class="graf graf-comp" viewBox="0 0 ${W} ${linhas.length * (bh + gap) + 4}">`;
+  s += `<text x="${W - 2}" y="11" font-size="10.5" font-weight="bold" fill="#52514e" text-anchor="end">Extensão total</text>`;
+  linhas.forEach((l, i) => {
+    const y = 16 + i * (bh + gap), tot = soma(l.r); let x = x0;
+    s += `<text x="${x0 - 8}" y="${y + bh / 2 + 4}" font-size="11.5" font-weight="bold" text-anchor="end" style="fill:${l.cor}" fill="${l.cor}">${esc(l.rot)}</text>`;
+    for (const c of sits) {
+      const v = l.r[c]; if (!v) continue;
+      const w = bw * v / tot, rot = km2(v);
+      s += `<rect class="hov" x="${x}" y="${y}" width="${Math.max(w, 0.8)}" height="${bh}" fill="${SIT[c][1]}" stroke="#fff" stroke-width=".6"
+              data-tip="<b>${esc(l.rot)}</b><br>${SIT[c][0]}: ${rot} (${br(100 * v / tot)}%)"/>`;
+      if (w > textW(rot, 9.5) + 8) s += `<text x="${x + w / 2}" y="${y + bh / 2 + 3.5}" font-size="9.5" font-weight="bold" text-anchor="middle" pointer-events="none"
+              fill="${BRANCO.has(c) ? "#fff" : "#0b0b0b"}">${rot}</text>`;
+      x += w;
+    }
+    s += `<text x="${xT}" y="${y + bh / 2 + 4}" font-size="11" font-weight="bold" style="fill:${l.cor}" fill="${l.cor}">${km2(tot)}</text>`;
+  });
+  s += `</svg><div class="leg-g">${sits.map(c => `<span><i style="background:${SIT[c][1]}"></i>${SIT[c][0]}</span>`).join("")}</div>`;
+  const nm0 = m.nome.length <= 22 ? m.nome : m.nome.slice(0, 21) + "…";
+  $("#g-peso").innerHTML = h + `<div class="peso"><div class="peso-mapa">${miniMapa(cod, lts)}
+        <div class="peso-rot"><span style="color:${T_MU}">${esc(nm0)}</span><br><span style="color:${T_LT}">${esc(rl)}</span><br><span style="color:${T_GO}">Goiás</span></div></div><div>${s}</div></div>`;
 }
 
 /* ---------------- tabelas ---------------- */
@@ -524,7 +558,7 @@ function tabela(el, cols, linhas, vazio, aoClicar) {
       const r = (!isNaN(nx) && !isNaN(ny) && x !== "" && y !== "") ? nx - ny : String(x ?? "").localeCompare(String(y ?? ""), "pt-BR");
       return asc ? r : -r; });
     el.innerHTML = `<thead><tr>${cols.map(c => `<th data-k="${c.k}" class="${ord === c.k ? "ord" + (asc ? " asc" : "") : ""}">${c.t}</th>`).join("")}</tr></thead><tbody>` +
-      (ls.length ? ls.map((l, i) => `<tr data-i="${linhas.indexOf(l)}">${cols.map(c => `<td>${c.f ? c.f(l[c.k]) : esc(l[c.k] ?? "")}</td>`).join("")}</tr>`).join("")
+      (ls.length ? ls.map((l, i) => `<tr data-i="${linhas.indexOf(l)}">${cols.map(c => `<td>${c.f ? c.f(l[c.k], l) : esc(l[c.k] ?? "")}</td>`).join("")}</tr>`).join("")
         : `<tr class="vazio"><td colspan="${cols.length}">${vazio}</td></tr>`) + "</tbody>";
     el.querySelectorAll("th").forEach(th => th.onclick = () => { const k = th.dataset.k; asc = ord === k ? !asc : true; ord = k; desenha(); });
     if (aoClicar) el.querySelectorAll("tbody tr[data-i]").forEach(tr => tr.onclick = () => {
@@ -533,19 +567,27 @@ function tabela(el, cols, linhas, vazio, aoClicar) {
   desenha();
   return { filtra: t => { filtro = semAcento(t); desenha(); } };
 }
+// cor da tarja do "Mapa" = cor do símbolo no mapa (obra azul por tipo; projeto pela intervenção ou pela placa)
+function corTarja(l) {
+  if (l.natureza === "Obra") return [l.tipo === "Pontual" ? DOR_PONT : (DOR_COR[l.intervencao] || "#0055d6"), "#fff"];
+  if (l.tipo === "Pontual") { const p = PJ_PONT[l.cat] || PJ_PONT.Projeto; return [p[1], p[2]]; }
+  return [PJ_COR[l.intervencao] || "#666666", "#fff"];
+}
 function tabelaObras(m) {
+  const ls = (m.obras || []).map(l => ({ ...l, _cor: corTarja(l) }));
   tabela($("#t-obras"), [
-    { k: "mapa", t: "Mapa" }, { k: "codigo", t: "Código" }, { k: "rodovia", t: "Rodovia" }, { k: "intervencao", t: "Intervenção" },
+    { k: "mapa", t: "Mapa", f: (v, l) => `<span class="tarja" style="background:${l._cor[0]};color:${l._cor[1]}">${esc(v)}</span>` },
+    { k: "codigo", t: "Código" }, { k: "rodovia", t: "Rodovia" }, { k: "intervencao", t: "Intervenção" },
     { k: "tipo", t: "Tipo" }, { k: "km_mun", t: "Km mun.", f: v => num(v, 2) }, { k: "km_contrato", t: "Km contr.", f: v => num(v, 2) },
-    { k: "etapa", t: "Etapa" }, { k: "situacao", t: "Situação" }], m.obras || [], "Sem obras da DOR no município");
+    { k: "etapa", t: "Etapa" }, { k: "situacao", t: "Situação" }, { k: "natureza", t: "Natureza" }], ls, "Sem obras e projetos para o município");
 }
 let tSRE = null;
 function tabelaSRE(m) {
   $("#filtro").value = "";
   tSRE = tabela($("#t-sre"), [
     { k: "sre", t: "SRE" }, { k: "go", t: "GO" }, { k: "classe", t: "Classe" }, { k: "inicio", t: "Início" }, { k: "fim", t: "Fim" },
-    { k: "km_ini", t: "km inicial", f: v => num(v, 3) }, { k: "km_fim", t: "km final", f: v => num(v, 3) },
-    { k: "ext", t: "Ext. SRE (km)", f: v => num(v, 3) }, { k: "ext_mun", t: "Ext. no mun. (km)", f: v => num(v, 3) },
+    { k: "km_ini", t: "Km inicial", f: v => num(v, 2) }, { k: "km_fim", t: "Km final", f: v => num(v, 2) },
+    { k: "ext", t: "Ext. SRE (Km)", f: v => num(v, 2) }, { k: "ext_mun", t: "Ext. no mun. (Km)", f: v => num(v, 2) },
     { k: "pct_mun", t: "% no mun.", f: v => num(v, 1) }, { k: "situacao", t: "Situação" }, { k: "jurisdicao", t: "Jurisdição" },
     { k: "perim_urb", t: "Perím. urb." }], m.trechos || [], "Sem trechos do SRE no município", l => destacaTrecho(l.sre));
 }
@@ -561,9 +603,14 @@ function legenda() {
     it(ln("#e31a1c", 5), "Duplicada") + it(ln("#e31a1c", 3), "Pavimentada") + it(ln("#e31a1c", 3, "8 5"), "Em obras de pavimentação") +
     it(ln("#e88000", 3), "Implantada / Leito natural") +
     `<div class="lg-tit">SNV – Rodovias federais</div>` + it(ln("#33a02c", 3), "Federal") +
-    `<div class="lg-tit">Obras DOR</div>` +
+    `<div class="lg-tit">Obras</div>` +
     Object.entries(DOR_COR).map(([k, c]) => it(ln(c, 5, null, "#ffffff"), k)).join("") +
-    it(`<svg width="34" height="14"><circle cx="17" cy="7" r="5.5" fill="#4e88b9" stroke="#fff" stroke-width="2"/></svg>`, "Obras pontuais (ponte, viaduto, bueiro)") +
+    it(`<svg width="34" height="14"><circle cx="17" cy="7" r="5.5" fill="${DOR_PONT}" stroke="#fff" stroke-width="2"/></svg>`, "Obras pontuais (ponte, viaduto, bueiro)") +
+    `<div class="lg-tit">Projetos</div>` +
+    PJ_CLASSES.map(([iv, et]) => it(`<svg width="34" height="12"><line x1="3" x2="31" y1="6" y2="6" stroke="${PJ_COR[iv]}" stroke-width="7" stroke-linecap="round"/>
+      <line x1="3" x2="31" y1="6" y2="6" stroke="#fff" stroke-width="2.3" ${et === "Projeto" ? `stroke-linecap="round"` : `stroke-dasharray="5 3.5"`}/></svg>`, `${iv} - ${et}`)).join("") +
+    `<div class="lg-tit">Projetos pontuais</div>` +
+    Object.entries(PJ_PONT).map(([k, p]) => it(`<img src="${p[0]}" width="18" height="18" alt="" style="margin:0 8px">`, k)).join("") +
     `<div class="lg-tit">Demais</div>` +
     it(`<svg width="34" height="14"><rect x="3" y="2" width="28" height="10" fill="none" stroke="#ffd400" stroke-width="3"/></svg>`, "Limite municipal") +
     it(`<svg width="34" height="14"><rect x="3" y="2" width="28" height="10" fill="#f2d24b" fill-opacity=".3" stroke="#f2d24b"/></svg>`, "Perímetro urbano") +
