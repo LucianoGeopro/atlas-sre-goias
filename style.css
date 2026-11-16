@@ -247,6 +247,7 @@ html[data-tema=escuro], [data-tema=escuro] body { background: var(--fundo); colo
   .busca { padding: 8px 16px; } .busca input { flex: 1 1 auto; } .busca-pag { display: none; }
   /* 16/11/2026: ‹ busca › na mesma linha; Combinar/Capa/Tema na linha de baixo */
   .busca-campo { flex: 1 1 calc(100% - 96px); }
+  .busca > button:not(#ant):not(#prox) { flex: 1 1 auto; margin-left: 0 !important; }   /* botões preenchem a linha */
   .pagina { padding: 12px 16px; }
   .mapa { height: 58vh; min-height: 320px; max-height: 560px; }
   .graficos { grid-template-columns: minmax(0, 1fr); }
@@ -278,6 +279,30 @@ html[data-tema=escuro], [data-tema=escuro] body { background: var(--fundo); colo
   padding: 12px 30px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.25); max-width: calc(100vw - 32px); }
 .capa-entrar:hover, .capa-entrar:focus-visible { background: var(--brand); outline: 3px solid #f2c200; outline-offset: 2px; }
 [data-tema=escuro] .capa { background: #121416; }
+/* página inicial (16/11/2026): capa + resumo — lado a lado em tela larga, um embaixo do outro no celular */
+.capa-resumo { flex: none; width: min(calc(100vw - 32px), 760px); background: #fff; color: var(--ink); border-radius: 4px;
+  box-shadow: 0 4px 22px rgba(0,0,0,.18); padding: 20px 24px; font-size: 14px; line-height: 1.5; }
+.capa-resumo h2 { margin: 0; font-size: 22px; color: var(--brand); }
+.capa-resumo h3 { margin: 16px 0 4px; font-size: 14px; color: var(--brand); text-transform: uppercase; letter-spacing: .3px; }
+.capa-resumo p { margin: 6px 0; }
+.capa-resumo ul { margin: 4px 0; padding-left: 20px; }
+.capa-resumo li { margin: 2px 0; }
+.capa-mes { font-weight: bold; color: var(--verde); text-transform: uppercase; font-size: 13px; letter-spacing: .4px; margin-top: 2px !important; }
+.capa-nota { color: var(--muted); font-size: 12.5px; }
+.capa-resumo .capa-entrar { display: block; width: 100%; margin-top: 16px; }
+.capa-aberta .capa { justify-content: flex-start; }
+@media (min-width: 1000px) {
+  .capa-aberta .capa { flex-direction: row; justify-content: center; align-items: center; }
+  .capa-img { width: min(calc(100vw - 32px - 380px - 14px), calc((100vh - 32px) * 1.4141)); }
+  .capa-resumo { width: 380px; max-height: calc(100vh - 32px); overflow: auto; }
+}
+[data-tema=escuro] .capa-resumo { background: var(--sup); color: var(--ink); box-shadow: 0 4px 22px rgba(0,0,0,.6); }
+[data-tema=escuro] .capa-resumo .capa-entrar { color: #111; background: var(--brand); }
+[data-tema=escuro] .capa-mes { color: var(--brand); }
+/* botão Copiar link */
+.busca .link-btn { width: auto; font-size: 13px; padding: 0 12px; white-space: nowrap; }
+.busca .link-btn.ok { color: #fff; background: var(--verde); border-color: var(--verde); }
+[data-tema=escuro] .busca .link-btn.ok { color: #111; background: var(--brand); border-color: var(--brand); }
 .busca #ver-capa { margin-left: auto; }
 .busca #ver-capa + .tema-btn { margin-left: 0; }
 
