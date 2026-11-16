@@ -80,7 +80,60 @@ function resumoCapa() {
   const g = A.goias, n = Object.keys(A.municipios).length, l = Object.keys(A.lotes).length;
   $("#capa-numeros").innerHTML = `Situação da malha rodoviária estadual nos <b>${n}</b> municípios goianos: <b>${km2(g.total)}</b>
     de rodovias estaduais, índice de pavimentação de <b>${br(g.idx_pav, 1)}%</b>, em ${l} lotes de manutenção.`;
+  resumoSobre();
 }
+
+/* ---------------- sobre os dados (16/11/2026) ---------------- */
+// página por cima da capa e do atlas; F5 com ela aberta mantém aberta (sessionStorage, como a capa)
+const SIT_TXT = {
+  DUP: "pista duplicada (duas pistas separadas), pavimentada.",
+  PAV: "pista simples com revestimento asfáltico.",
+  EOD: "trecho pavimentado em obras de duplicação.",
+  EOP: "trecho sem pavimento em obras de pavimentação; quando concluídas, passa a Pavimentada.",
+  IMP: "estrada implantada (plataforma, greide e drenagem construídos), ainda sem pavimento.",
+  LEN: "estrada de terra sem implantação técnica, no leito natural do terreno."
+};
+const sobreAberto = () => document.documentElement.classList.contains("sobre-aberto");
+function abreSobre() {
+  const s = $("#sobre"); s.hidden = false; document.documentElement.classList.add("sobre-aberto"); guarda("atlas-sobre", "1");
+  s.scrollTop = 0; $("#sobre-voltar").focus();
+}
+function fechaSobre() {
+  $("#sobre").hidden = true; document.documentElement.classList.remove("sobre-aberto"); guarda("atlas-sobre", "0");
+}
+document.querySelectorAll(".abre-sobre").forEach(b => b.onclick = abreSobre);
+$("#sobre-voltar").onclick = fechaSobre;
+document.querySelectorAll(".sobre-entrar").forEach(b => b.onclick = () => { fechaSobre(); fechaCapa(); });
+document.querySelectorAll(".sobre-indice [data-ir]").forEach(b => b.onclick = () => {
+  const alvo = document.getElementById(b.dataset.ir), s = $("#sobre");
+  s.scrollTo({ top: alvo.offsetTop - $(".sobre-barra").offsetHeight - 8, behavior: "smooth" });
+});
+if (window.ATLAS_RECARGA && lembra("atlas-sobre") === "1") abreSobre(); else guarda("atlas-sobre", "0");
+function resumoSobre() {
+  const g = A.goias, ms = Object.values(A.municipios), n = ms.length, l = Object.keys(A.lotes).length;
+  const cad = ((ms[0] && ms[0].notas || "").match(/cadastros de (\d\d\/\d\d\/\d{4})/) || [])[1] || "–";
+  const fx = ms.reduce((a, m) => a + (m.faixa_ha || 0), 0);
+  const ip = br(g.idx_pav, 1) + "%", dens = br(g.dens, 1) + " Km/1.000 Km²";
+  const pav = (g.situacao.PAV || 0) + (g.situacao.DUP || 0), eop = g.situacao.EOP || 0;
+  document.querySelectorAll(".sb-mun").forEach(e => e.textContent = n);
+  document.querySelectorAll(".sb-cad").forEach(e => e.textContent = cad);
+  document.querySelectorAll(".sb-ip").forEach(e => e.textContent = ip);
+  document.querySelectorAll(".sb-dens").forEach(e => e.textContent = dens);
+  const c = [["Malha estadual", km2(g.total), `${n} municípios · ${l} lotes`],
+    ["Índice de pavimentação", ip, `${km2(pav)} pavimentados ou duplicados`],
+    ["Após as obras de pavimentação", pcS(100 * (pav + eop) / g.total), `${km2(eop)} em obras de pavimentação`],
+    ["Densidade rodoviária", br(g.dens, 1), `Km por 1.000 Km² · área ${br(g.area_km2, 0)} Km²`],
+    ["Faixa de domínio", br(fx, 0) + " ha", "soma dos municípios"]];
+  $("#sobre-cartoes").innerHTML = c.map(([t, v, s]) => `<div class="sobre-cartao"><span class="t">${t}</span><b>${v}</b><span class="s">${s}</span></div>`).join("");
+  const sits = ORD.filter(k => k !== "PLA" && g.situacao[k]);
+  $("#sobre-sit").innerHTML = `<thead><tr><th>Situação</th><th>Extensão</th><th>% da malha</th></tr></thead><tbody>` +
+    sits.map(k => `<tr><td><i class="sb-cor" style="background:${SIT[k][1]}"></i>${SIT[k][0]}</td><td>${km2(g.situacao[k])}</td>` +
+      `<td>${pcS(100 * g.situacao[k] / g.total)}</td></tr>`).join("") +
+    `<tr class="tot"><td>Total</td><td>${km2(g.total)}</td><td>100,0%</td></tr></tbody>`;
+  $("#sobre-sit-lista").innerHTML = ORD.filter(k => k !== "PLA").map(k =>
+    `<li><i class="sb-cor" style="background:${SIT[k][1]}"></i><b>${SIT[k][0]}:</b> ${SIT_TXT[k]}</li>`).join("");
+}
+const pcS = v => br(v, 1) + "%";
 
 /* ---------------- copiar o link do município aberto (16/11/2026) ---------------- */
 // o endereço da barra fica no link principal; este botão monta o link com #código(s) para enviar a alguém
@@ -212,7 +265,8 @@ document.addEventListener("keydown", e => {
   else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); $("#ant").click(); }
 });
 const limpaHash = () => { if (location.hash) history.replaceState(null, "", location.pathname + location.search); };
-document.addEventListener("keydown", e => { if (e.key === "Escape" && document.documentElement.classList.contains("capa-aberta")) fechaCapa(); });
+document.addEventListener("keydown", e => { if (e.key !== "Escape" || APRES) return;
+  if (sobreAberto()) fechaSobre(); else if (document.documentElement.classList.contains("capa-aberta")) fechaCapa(); });
 
 /* ---------------- carga ---------------- */
 // cada mês fica em data/<AAAA-MM>/ (atlas.json, sre, obras DOR); as bases fixas ficam em data/
@@ -270,7 +324,7 @@ $("#ant").onclick = () => seleciona(LISTA[(LISTA.indexOf(atual) - 1 + LISTA.leng
 $("#prox").onclick = () => seleciona(LISTA[(LISTA.indexOf(atual) + 1) % LISTA.length]);
 window.addEventListener("hashchange", () => { const c = codsDoHash();
   if (c.length && c.join() !== SEL.join()) selecionaLista(c, false);
-  if (c.length) { fechaCapa(); limpaHash(); } });
+  if (c.length) { fechaSobre(); fechaCapa(); limpaHash(); } });
 
 /* ---------------- mapa ---------------- */
 function estiloSRE(f) {
