@@ -94,6 +94,17 @@ body { overflow-x: hidden; }
 .leaflet-tooltip.rot-loc::before { display: none; }
 .escala-num { background: #fff; padding: 2px 6px; font-size: 11px; font-weight: bold; border: 1px solid #999; }
 .btn-mapa { background: #fff; border: 1px solid #999; border-radius: 3px; padding: 4px 8px; font-size: 12px; cursor: pointer; }
+/* copiar coordenadas (16/11/2026) — mesmas cores nos dois temas (fica sobre o mapa) */
+.btn-mapa.btn-coord.ativo { background: #1f5fa8; border-color: #1f5fa8; color: #fff !important; }
+.mapa.modo-coord, .mapa.modo-coord .leaflet-interactive { cursor: crosshair !important; }
+.leitura-coord { background: rgba(255,255,255,.94); color: #222; border: 1px solid #999; border-radius: 3px; padding: 2px 6px;
+                 font: bold 11px/1.4 Consolas, "Courier New", monospace; }
+.popup-coord .leaflet-popup-content { margin: 8px 10px; color: #222; }
+.pop-coord .pc-tit { font-size: 11px; color: #555; margin-bottom: 3px; }
+.pop-coord code { display: block; font: bold 13px Consolas, "Courier New", monospace; user-select: all; }
+.pop-coord .pc-lin { font-size: 11px; color: #555; margin: 2px 0 6px; }
+.pop-coord button { background: #fff; color: #222; border: 1px solid #999; border-radius: 3px; padding: 3px 8px; font-size: 12px; cursor: pointer; }
+.pop-coord button.ok { background: #e3f2e1; border-color: #5a9a52; color: #2d6a27; }
 /* mapa expandido (16/11/2026): só o mapa, tela toda; abaixo da dica (3000) e da capa (5000) */
 .mapa.mapa-cheio { position: fixed !important; inset: 0;   /* !important: o Leaflet grava position:relative no elemento */ z-index: 2800; width: auto; height: auto !important; min-height: 0 !important;
                    max-height: none !important; border: 0; }
