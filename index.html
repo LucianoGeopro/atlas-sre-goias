@@ -6,15 +6,41 @@
 <title>Atlas SRE Municípios – GOINFRA</title>
 <meta name="description" content="Sistema Rodoviário Estadual – SRE, atualizado mensalmente: situação da malha, indicadores, obras e projetos e composição da malha de cada município de Goiás.">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css?v=17">
+<link rel="stylesheet" href="style.css?v=18">
 <script>try { if (/tema=escuro/.test(location.search) || localStorage.getItem("atlas-tema") === "escuro") document.documentElement.dataset.tema = "escuro"; } catch (e) { if (/tema=escuro/.test(location.search)) document.documentElement.dataset.tema = "escuro"; }
-// capa: aparece no link principal; link direto de município (#código) ou ?capa=0 vai direto ao atlas
-if (!location.hash && !/capa=0/.test(location.search)) document.documentElement.classList.add("capa-aberta");</script>
+// página inicial (16/11/2026): aparece ao abrir o link principal; link de município (#código) ou ?capa=0 vai direto ao atlas;
+// F5 mantém o que estava na tela (capa aberta ou fechada) — a aba guarda o estado em sessionStorage
+(function () {
+  var nav = performance.getEntriesByType ? performance.getEntriesByType("navigation")[0] : null;
+  var recarga = !!nav && nav.type === "reload", ant = null;
+  try { ant = sessionStorage.getItem("atlas-capa"); } catch (e) {}
+  var abre = /capa=0/.test(location.search) ? false : location.hash ? false : (recarga && ant) ? ant === "1" : true;
+  window.ATLAS_RECARGA = recarga;
+  try { sessionStorage.setItem("atlas-capa", abre ? "1" : "0"); } catch (e) {}
+  if (abre) document.documentElement.classList.add("capa-aberta");
+})();</script>
 </head>
 <body>
 <section id="capa" class="capa" aria-label="Capa do atlas">
   <img class="capa-img" src="img/capa.jpg" alt="Caderno de Obras – Recorte Municipal. SRE de outubro/2026, 246 municípios goianos: situação da malha estadual com obras e indicadores. GOINFRA, SEINFRA, Governo de Goiás." width="1902" height="1345">
-  <button id="capa-entrar" class="capa-entrar" type="button">Acessar o atlas ›</button>
+  <div class="capa-resumo">
+    <h2 class="capa-tit">Atlas do SRE por município</h2>
+    <p class="capa-mes">SRE <span class="mes-min">…</span></p>
+    <p id="capa-numeros">Situação da malha rodoviária estadual nos municípios goianos.</p>
+    <h3>O que você encontra em cada município</h3>
+    <ul>
+      <li>Mapa da situação atual das rodovias do SRE, com obras e projetos</li>
+      <li>Indicadores: extensão, índice de pavimentação, densidade rodoviária e faixa de domínio</li>
+      <li>Gráficos por situação, por rodovia e trechos urbanos × rurais</li>
+      <li>Comparativo do peso do município no lote e no estado</li>
+      <li>Quadro de obras e projetos e quadro de trechos do SRE</li>
+    </ul>
+    <h3>Como usar</h3>
+    <p>Busque o município na barra do topo, use ‹ › para navegar, “Combinar municípios” para somar vários
+      e “⛶ Expandir mapa” para ver só o mapa.</p>
+    <p class="capa-nota">Base atualizada mensalmente.</p>
+    <button id="capa-entrar" class="capa-entrar" type="button">Acessar o atlas ›</button>
+  </div>
 </section>
 <header class="cab">
   <div class="cab-ante">SISTEMA RODOVIÁRIO ESTADUAL – SRE<br><span class="mes-up"></span></div>
@@ -28,6 +54,7 @@ if (!location.hash && !/capa=0/.test(location.search)) document.documentElement.
   <button id="prox" title="Próximo município" aria-label="Próximo município">›</button>
   <span class="busca-pag" id="pag"></span>
   <button id="combinar" class="comb-btn" type="button" aria-pressed="false" title="Ligado: cada clique num município do mapa soma ou tira ele da seleção (atalho: Ctrl + clique)">＋ Combinar municípios</button>
+  <button id="copiar" class="link-btn" type="button" title="Copiar o link do município aberto, para enviar a alguém">🔗 Copiar link</button>
   <select id="mes" class="mes-sel" aria-label="Mês da base do SRE" title="Mês da base do SRE" hidden></select>
   <button id="ver-capa" class="tema-btn" type="button" title="Ver a capa">Capa</button>
   <button id="tema" class="tema-btn" type="button" title="Alternar tema claro/escuro">🌙 Tema escuro</button>
@@ -92,6 +119,6 @@ if (!location.hash && !/capa=0/.test(location.search)) document.documentElement.
 <div id="carregando" class="carregando">Carregando o atlas…</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="app.js?v=16"></script>
+<script src="app.js?v=17"></script>
 </body>
 </html>
