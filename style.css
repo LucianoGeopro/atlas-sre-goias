@@ -94,6 +94,10 @@ body { overflow-x: hidden; }
 .leaflet-tooltip.rot-loc::before { display: none; }
 .escala-num { background: #fff; padding: 2px 6px; font-size: 11px; font-weight: bold; border: 1px solid #999; }
 .btn-mapa { background: #fff; border: 1px solid #999; border-radius: 3px; padding: 4px 8px; font-size: 12px; cursor: pointer; }
+/* mapa expandido (16/11/2026): só o mapa, tela toda; abaixo da dica (3000) e da capa (5000) */
+.mapa.mapa-cheio { position: fixed !important; inset: 0;   /* !important: o Leaflet grava position:relative no elemento */ z-index: 2800; width: auto; height: auto !important; min-height: 0 !important;
+                   max-height: none !important; border: 0; }
+html.mapa-expandido, html.mapa-expandido body { overflow: hidden; }
 
 /* cartões de indicadores */
 .cartoes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
@@ -241,6 +245,8 @@ html[data-tema=escuro], [data-tema=escuro] body { background: var(--fundo); colo
   .cab-ante { font-size: 12px; } .cab-titulo { font-size: 22px; } .cab-logo { justify-self: center; }
   .cab-logo img { height: 34px; }
   .busca { padding: 8px 16px; } .busca input { flex: 1 1 auto; } .busca-pag { display: none; }
+  /* 16/11/2026: ‹ busca › na mesma linha; Combinar/Capa/Tema na linha de baixo */
+  .busca-campo { flex: 1 1 calc(100% - 96px); }
   .pagina { padding: 12px 16px; }
   .mapa { height: 58vh; min-height: 320px; max-height: 560px; }
   .graficos { grid-template-columns: minmax(0, 1fr); }
