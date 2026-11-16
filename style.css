@@ -372,6 +372,25 @@ html.apres-img, html.apres-img body { overflow: hidden; }
 #apres-ant, #apres-prox { top: 50%; transform: translateY(-50%); width: 46px; height: 84px; font-size: 36px; line-height: 1; }
 #apres-ant { left: 10px; } #apres-prox { right: 10px; }
 #apres-sair { top: 12px; right: 12px; padding: 9px 14px; }
+/* zoom da folha montada (16/11/2026): só com vários municípios; a página de um município já tem o próprio zoom */
+.apres-zoom { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: none; }
+.apres-ctl .apres-zoom button { position: static; padding: 8px 14px; min-width: 44px; }
+#apres-zmenos, #apres-zmais { font-size: 22px; line-height: 1; padding: 4px 12px; }
+html.apres-img .apres-zoom { display: none; }
+html.apres.folha-zoom .folha { cursor: grab; user-select: none; }
+html.apres.folha-zoom .folha .mapa { cursor: auto; }
+html.arrastando, html.arrastando * { cursor: grabbing !important; }
+/* balão de informações (clique no mapa ou nos gráficos, no modo apresentação) */
+.balao { position: fixed; z-index: 2950; background: #fff; color: #222; border: 1px solid #8a8a8a; border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.3); padding: 8px 28px 8px 10px; font: 12.5px/1.45 Arial, sans-serif; max-width: 360px; }
+.balao[hidden] { display: none; }
+.balao .bx { position: absolute; top: 3px; right: 4px; border: 0; background: none; color: #555; font-size: 15px; cursor: pointer; padding: 2px 5px; }
+.balao .bx:hover { color: #000; }
+.balao .bt { font-weight: bold; font-size: 13.5px; margin-bottom: 3px; }
+.balao .bs { font-weight: bold; color: #1b6b3a; margin: 5px 0 1px; border-top: 1px solid #e3e3dc; padding-top: 4px; }
+.balao table { border-collapse: collapse; }
+.balao td { padding: 1px 10px 1px 0; vertical-align: top; }
+.balao td:first-child { color: #666; white-space: nowrap; }
 /* botão Copiar link */
 .busca .link-btn { width: auto; font-size: 13px; padding: 0 12px; white-space: nowrap; }
 .busca .link-btn.ok { color: #fff; background: var(--verde); border-color: var(--verde); }
