@@ -75,7 +75,7 @@ body { font-size: 13px; }
 
 /* página: duas colunas na proporção do layout (151 : 226 mm) */
 .pagina { display: grid; grid-template-columns: minmax(0, 151fr) minmax(0, 226fr); gap: 18px 22px; padding: 16px 24px;
-          max-width: 1800px; margin: 0 auto; background: #fff; }
+          margin: 0; background: #fff; }   /* largura total da tela (16/11/2026): margens só no caderno */
 .sec { color: var(--brand); font-size: 13px; font-weight: bold; margin: 14px 0 6px; padding-bottom: 3px;
        border-bottom: 1.5px solid var(--brand); }
 .col-esq, .col-dir { min-width: 0; }
@@ -178,7 +178,7 @@ svg .hov:hover { opacity: .8; }
 .legenda svg { flex: none; }
 
 .rodape { text-align: center; font-size: 11px; color: var(--ink2); padding: 12px 24px 18px; background: #fff;
-          border-top: 2px solid var(--brand); max-width: 1800px; margin: 0 auto; line-height: 1.6; }
+          border-top: 2px solid var(--brand); margin: 0; line-height: 1.6; }
 
 .dica { position: fixed; z-index: 3000; pointer-events: none; background: rgba(30,30,28,.94); color: #fff; font-size: 12px;
         padding: 6px 9px; border-radius: 4px; max-width: 280px; line-height: 1.4; display: none; }
