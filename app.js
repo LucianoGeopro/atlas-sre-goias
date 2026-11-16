@@ -31,7 +31,7 @@ const soma = o => Object.values(o || {}).reduce((a, b) => a + b, 0);
 let A, GEO = {}, LISTA = [], atual = null, mapa, camadas = {}, AREA = [];
 // seleção de vários municípios (13/11/2026): SEL = códigos selecionados (o 1º é o "principal"), BBOX = caixa da seleção,
 // COMB = modo "Combinar" (clique no mapa adiciona/remove), M = dados somados da seleção
-let SEL = [], BBOX = null, COMB = false, M = null;
+let SEL = [], BBOX = null, COMB = false, M = null, MES_SITE = "";
 
 /* ---------------- dica (tooltip) para gráficos ---------------- */
 const dica = $("#dica");
@@ -99,6 +99,118 @@ $("#copiar").onclick = async () => {
   b.textContent = "✓ Link copiado"; b.classList.add("ok");
   clearTimeout(b._t); b._t = setTimeout(() => { b.textContent = "🔗 Copiar link"; b.classList.remove("ok"); }, 2200);
 };
+/* ---------------- modo apresentação (16/11/2026) ---------------- */
+// a #folha (cabeçalho, página e rodapé) vira uma página A3 deitada de tamanho fixo, como o caderno exportado do QGIS,
+// e é escalada para caber na tela; sempre no tema claro (papel); ← → trocam o município, Esc sai
+const FOLHA_W = 1680, FOLHA_H = Math.round(1680 / Math.SQRT2);   // proporção A3 (420 × 297 mm)
+let APRES = false, temaAntes = null, ctlTimer = null;
+function escalaFolha() {
+  const s = Math.min(window.innerWidth / FOLHA_W, window.innerHeight / FOLHA_H);
+  const f = $("#folha");
+  f.style.transform = `translate(${(window.innerWidth - FOLHA_W * s) / 2}px, ${(window.innerHeight - FOLHA_H * s) / 2}px) scale(${s})`;
+}
+// encolhe (zoom) os blocos de cada coluna até tudo caber na folha; o mapa não encolhe
+function ajustaFolha() {
+  if (!APRES || IMG) return;
+  const sobra = col => col.scrollHeight > col.clientHeight + 1;
+  const encolhe = (col, alvos, min) => {
+    const els = alvos.flatMap(s => [...col.querySelectorAll(s)]);
+    for (let z = 1; sobra(col) && z > min + 0.001; ) { z = Math.max(min, z - 0.04); els.forEach(e => e.style.zoom = z); }
+  };
+  const esq = $(".col-esq"), dir = $(".col-dir");
+  document.querySelectorAll("#t-sre tr.apres-mais").forEach(tr => tr.remove());      // desfaz o ajuste anterior
+  document.querySelectorAll("#t-sre tbody tr").forEach(tr => tr.style.display = "");
+  [esq, dir].forEach(c => c.querySelectorAll("[style*=zoom]").forEach(e => e.style.zoom = ""));
+  // tabelas: primeiro cabem na largura da coluna (como no caderno, sem cortar colunas)
+  document.querySelectorAll("#folha .tab-rolagem > table").forEach(t => {
+    const z = t.parentElement.clientWidth / t.scrollWidth; if (z < 1) t.style.zoom = z;
+  });
+  encolhe(esq, [".b-notas", ".b-legenda"], 0.6);                  // 1º notas e legenda, depois o quadro de obras junto
+  encolhe(esq, [".b-obras", ".b-notas", ".b-legenda"], 0.45);
+  encolhe(dir, [".b-sre .tab-rolagem"], 0.55);                    // 1º o quadro de trechos
+  encolhe(dir, [".b-graf", ".b-peso", ".b-comp"], 0.7);            // depois os gráficos
+  encolhe(dir, [".b-sre .tab-rolagem"], 0.4);
+  // seleção grande demais para uma folha: mostra os trechos que cabem e avisa quantos ficaram de fora
+  const baixo = dir.getBoundingClientRect().bottom, linhas = [...document.querySelectorAll("#t-sre tbody tr")];
+  const fora = linhas.filter(tr => tr.getBoundingClientRect().bottom > baixo + 1);
+  if (fora.length) {
+    const n = fora.length + 1; linhas.slice(-n).forEach(tr => tr.style.display = "none");
+    const tr = document.createElement("tr"); tr.className = "apres-mais";
+    tr.innerHTML = `<td colspan="99">… e mais ${n} trechos — a lista completa está no site, fora do modo apresentação</td>`;
+    $("#t-sre tbody").appendChild(tr);
+  }
+  if (mapa) { mapa.invalidateSize(); enquadra(); }
+}
+function mostraCtl() {
+  const c = $("#apres-ctl"); c.classList.add("vis");
+  clearTimeout(ctlTimer); ctlTimer = setTimeout(() => c.classList.remove("vis"), 2500);
+}
+function entraApres() {
+  if (APRES) return;
+  APRES = true;
+  if ($("#mapa").classList.contains("mapa-cheio")) expandeMapa(false);
+  temaAntes = escuro();
+  if (temaAntes) { delete document.documentElement.dataset.tema; if (camadas.mascara) camadas.mascara.redesenha(); }
+  if (mapa) mapa.keyboard.disable();                 // ← → trocam o município em vez de arrastar o mapa
+  $("#apres-ctl").hidden = false; mostraCtl();
+  if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+  modoApres();
+  setTimeout(() => { if (!IMG) { escalaFolha(); ajustaFolha(); } }, 300);      // depois de entrar na tela cheia
+}
+// 16/11/2026: um município = imagem da página do caderno exportada do QGIS (layout 04, data/<mês>/caderno/<código>.jpg);
+// vários municípios = a folha montada no site (não há imagem de combinação)
+let IMG = false;
+const SEM_IMG = new Set();                            // municípios cuja imagem não carregou: usam a folha montada
+function modoApres() {
+  if (!APRES) return;
+  const cod = SEL[0];
+  IMG = SEL.length === 1 && !SEM_IMG.has(cod);
+  document.documentElement.classList.toggle("apres", !IMG);
+  document.documentElement.classList.toggle("apres-img", IMG);
+  const caixa = $("#apres-img");
+  caixa.hidden = !IMG;
+  if (IMG) {
+    $("#folha").style.transform = "";
+    const im = $("#apres-img img"); caixa.classList.remove("zoom");
+    im.onerror = () => { SEM_IMG.add(cod); modoApres(); };
+    im.src = `data/${MES_SITE}/caderno/${cod}.jpg`;
+    im.alt = `Página do caderno – ${A.municipios[cod].nome}/GO`;
+  } else { escalaFolha(); ajustaFolha(); }
+}
+// clique na imagem: tamanho real (para ler as tabelas), no ponto clicado; outro clique volta a caber na tela
+$("#apres-img").addEventListener("click", ev => {
+  const c = $("#apres-img"), im = c.querySelector("img"), r = im.getBoundingClientRect();
+  const fx = (ev.clientX - r.left) / r.width, fy = (ev.clientY - r.top) / r.height;
+  c.classList.toggle("zoom");
+  if (c.classList.contains("zoom")) { c.scrollLeft = fx * im.offsetWidth - c.clientWidth / 2; c.scrollTop = fy * im.offsetHeight - c.clientHeight / 2; }
+});
+function saiApres() {
+  if (!APRES) return;
+  APRES = false; IMG = false;
+  document.documentElement.classList.remove("apres", "apres-img");
+  $("#apres-img").hidden = true; $("#apres-img").classList.remove("zoom");
+  $("#apres-ctl").hidden = true;
+  const f = $("#folha"); f.style.transform = "";
+  f.querySelectorAll("[style*=zoom]").forEach(e => e.style.zoom = "");
+  if (temaAntes) { document.documentElement.dataset.tema = "escuro"; if (camadas.mascara) camadas.mascara.redesenha(); }
+  if (mapa) mapa.keyboard.enable();
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  if (SEL.length) selecionaLista(SEL, false);           // redesenha os quadros (volta as linhas escondidas na folha)
+  if (mapa) setTimeout(() => { mapa.invalidateSize(); enquadra(); }, 50);
+}
+$("#apres").onclick = entraApres;
+$("#apres-sair").onclick = saiApres;
+$("#apres-ant").onclick = () => $("#ant").click();
+$("#apres-prox").onclick = () => $("#prox").click();
+document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement) saiApres(); else if (!IMG) { escalaFolha(); ajustaFolha(); } });
+window.addEventListener("resize", () => { if (APRES && !IMG) { escalaFolha(); ajustaFolha(); } });
+document.addEventListener("mousemove", () => { if (APRES) mostraCtl(); });
+document.addEventListener("keydown", e => {
+  if (!APRES || e.target.closest?.("input, select, textarea")) return;
+  if (e.key === "Escape") saiApres();
+  else if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); $("#prox").click(); }
+  else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); $("#ant").click(); }
+});
 const limpaHash = () => { if (location.hash) history.replaceState(null, "", location.pathname + location.search); };
 document.addEventListener("keydown", e => { if (e.key === "Escape" && document.documentElement.classList.contains("capa-aberta")) fechaCapa(); });
 
@@ -109,7 +221,7 @@ const VAZIO = { type: "FeatureCollection", features: [] };
 async function carrega() {
   const meses = await fetch("data/meses.json", { cache: "no-cache" }).then(r => r.json());
   const pedido = new URLSearchParams(location.search).get("mes");
-  const MES = (meses.find(m => m.id === pedido) || meses[0]).id;
+  const MES = (meses.find(m => m.id === pedido) || meses[0]).id; MES_SITE = MES;
   const nomes = ["municipios", "sre", "dor_linhas", "dor_pontos", "dpj_linhas", "dpj_pontos", "perimetro_urbano", "localidades", "snv_federal", "lotes"];
   const [atlas, ...geos] = await Promise.all([fetch(`data/${MES}/atlas.json`).then(r => r.json()),
     ...nomes.map(n => fetch(MENSAIS.has(n) ? `data/${MES}/${n}.geojson` : `data/${n}.geojson`)
@@ -542,6 +654,8 @@ function selecionaLista(cods, hist = true) {
   cartoes(M); grafSituacao(M); grafRodovia(M); grafUrbano(M); grafPeso(SEL, M); grafTipoObra(M);
   tabelaObras(M, multi); tabelaSRE(M, multi); comparacao(); barraSelecao();
   $("#notas").textContent = (M.notas || "").replace(/\\n/g, "\n");
+  $("#apres-pag").textContent = multi ? "" : "Página " + ms[0].ordem;
+  if (APRES) modoApres();
 }
 
 // soma dos municípios selecionados — trechos, obras e projetos que cruzam a divisa entre eles contam uma vez só
