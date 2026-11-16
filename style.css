@@ -291,11 +291,20 @@ html[data-tema=escuro], [data-tema=escuro] body { background: var(--fundo); colo
 .capa-nota { color: var(--muted); font-size: 12.5px; }
 .capa-resumo .capa-entrar { display: block; width: 100%; margin-top: 16px; }
 .capa-aberta .capa { justify-content: flex-start; }
+/* 16/11/2026: "246 municípios goianos" saiu da imagem e fica fora da capa, acima do resumo */
+.capa-lado { flex: none; display: flex; flex-direction: column; gap: 12px; width: min(calc(100vw - 32px), 760px); }
+.capa-lado .capa-resumo { width: 100%; }
+.capa-destaque { text-align: center; padding: 0 8px; }
+.capa-destaque p { margin: 0; }
+.cd-1 { font-size: 26px; font-weight: bold; color: var(--brand); padding-bottom: 8px; border-bottom: 2px solid var(--verde); }
+.cd-2 { font-size: 14px; color: var(--ink2); padding-top: 8px; }
 @media (min-width: 1000px) {
   .capa-aberta .capa { flex-direction: row; justify-content: center; align-items: center; }
   .capa-img { width: min(calc(100vw - 32px - 380px - 14px), calc((100vh - 32px) * 1.4141)); }
-  .capa-resumo { width: 380px; max-height: calc(100vh - 32px); overflow: auto; }
+  .capa-lado { width: 380px; max-height: calc(100vh - 32px); }
+  .capa-lado .capa-resumo { min-height: 0; overflow: auto; }
 }
+[data-tema=escuro] .cd-1 { border-bottom-color: var(--brand); }
 [data-tema=escuro] .capa-resumo { background: var(--sup); color: var(--ink); box-shadow: 0 4px 22px rgba(0,0,0,.6); }
 [data-tema=escuro] .capa-resumo .capa-entrar { color: #111; background: var(--brand); }
 [data-tema=escuro] .capa-mes { color: var(--brand); }
