@@ -101,8 +101,8 @@ body { overflow-x: hidden; }
                  font: bold 11px/1.4 Consolas, "Courier New", monospace; }
 .popup-coord .leaflet-popup-content { margin: 8px 10px; color: #222; }
 .pop-coord .pc-tit { font-size: 11px; color: #555; margin-bottom: 3px; }
-.pop-coord code { display: block; font: bold 13px Consolas, "Courier New", monospace; user-select: all; }
-.pop-coord .pc-lin { font-size: 11px; color: #555; margin: 2px 0 6px; }
+.pop-coord code { font: bold 13px Consolas, "Courier New", monospace; color: #222; user-select: all; }
+.pop-coord .pc-lin { font-size: 12px; color: #555; margin: 2px 0 6px; white-space: nowrap; }
 .pop-coord button { background: #fff; color: #222; border: 1px solid #999; border-radius: 3px; padding: 3px 8px; font-size: 12px; cursor: pointer; }
 .pop-coord button.ok { background: #e3f2e1; border-color: #5a9a52; color: #2d6a27; }
 /* mapa expandido (16/11/2026): só o mapa, tela toda; abaixo da dica (3000) e da capa (5000) */
