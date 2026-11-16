@@ -48,8 +48,94 @@ document.addEventListener("mousemove", ev => {
 });
 document.addEventListener("click", ev => {
   const t = ev.target.closest?.("[data-tip]");
+  if (APRES && !IMG) {                       // apresentação: o clique abre um balão que fica até fechar
+    if (ev === BAL_EV) return;               // é o clique que acabou de abrir o balão de um elemento do mapa
+    if (t) abreBalao(ev, t.dataset.tip); else fechaBalao();
+    return;
+  }
   if (t) mostraDica(ev, t.dataset.tip); else dica.style.display = "none";
 });
+
+/* ---------------- balão de informações no modo apresentação (16/11/2026) ---------------- */
+const balao = document.createElement("div"); balao.className = "balao"; balao.hidden = true; document.body.appendChild(balao);
+balao.addEventListener("click", e => e.stopPropagation());
+let BAL_EV = null;
+function abreBalao(ev, html) {
+  balao.innerHTML = `<button type="button" class="bx" title="Fechar" aria-label="Fechar">✕</button>${html}`;
+  balao.querySelector(".bx").onclick = fechaBalao;
+  balao.hidden = false; dica.style.display = "none"; BAL_EV = ev;
+  const w = balao.offsetWidth, h = balao.offsetHeight, x = ev.clientX, y = ev.clientY;
+  balao.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, x + 12)) + "px";
+  balao.style.top = Math.max(8, y + h + 20 > window.innerHeight ? y - h - 10 : y + 14) + "px";
+}
+function fechaBalao() { balao.hidden = true; }
+// elemento do mapa: no modo apresentação, o clique mostra as informações em vez de trocar o município
+function balaoMapa(l, html) {
+  l.on("click", e => {
+    if (!APRES || IMG) return;
+    L.DomEvent.stopPropagation(e); abreBalao(e.originalEvent, html());
+  });
+}
+const linB = (k, v) => (v === undefined || v === null || v === "") ? "" : `<tr><td>${k}</td><td>${v}</td></tr>`;
+const tabB = ls => `<table>${ls.join("")}</table>`;
+const kmB = v => (v === undefined || v === null || v === "" || isNaN(+v)) ? "" : km2(+v);
+function htmlSRE(p) {
+  const ts = (M?.trechos || []).filter(t => t.sre === p.sre);
+  let h = `<div class="bt">GO-${esc(p.go)} · ${esc(p.sre)}</div>` +
+    tabB([linB("Situação", SIT[p.sit]?.[0] || esc(p.sit)), linB("Jurisdição", esc(p.jur))]);
+  ts.forEach(t => {
+    h += (t._mun ? `<div class="bs">${esc(t._mun)}</div>` : "") + tabB([
+      linB("Início", esc(t.inicio)), linB("Fim", esc(t.fim)),
+      linB("Km inicial – final", t.km_ini !== undefined ? num(t.km_ini, 2) + " – " + num(t.km_fim, 2) : ""),
+      linB("Extensão do trecho", kmB(t.ext)),
+      linB("Extensão no município", kmB(t.ext_mun) + (t.pct_mun !== undefined && t.pct_mun !== "" ? ` (${num(t.pct_mun, 1)}%)` : "")),
+      linB("Classe", esc(t.classe)), linB("Perímetro urbano", ({ s: "Sim", n: "Não" })[String(t.perim_urb).toLowerCase()] || esc(t.perim_urb))]);
+  });
+  return h;
+}
+function htmlSNV(p) {
+  return `<div class="bt">BR-${esc(p.br)} · Federal</div>` + tabB([linB("Superfície", SIT[p.leg]?.[0] || esc(p.leg))]);
+}
+// obra (DOR) ou projeto (DPJ): dados do quadro "Obras e projetos" da seleção, pelo código
+function htmlObra(p, projeto) {
+  const os = (M?.obras || []).filter(o => o.codigo === p.codigo), o = os[0] || {};
+  const tit = projeto ? `Projeto – ${esc(p.intervencao)}` : `Obra – ${esc(p.intervencao)}`;
+  return `<div class="bt">${tit}</div>` + tabB([
+    linB("Natureza", projeto ? "<b>Projeto</b>" : "Obra"), linB("Código", esc(p.codigo)), linB("Rodovia", esc(p.rodovia)),
+    linB("Tipo", esc(o.tipo)), linB("Categoria", esc(p.cat)), linB("Etapa", esc(o.etapa || p.etapa)), linB("Situação", esc(o.situacao)),
+    ...os.filter(x => x.km_mun !== undefined && x.km_mun !== "" && x.km_mun !== null)
+      .map(x => linB("Km " + (x._mun ? "em " + esc(x._mun) : "no município"), kmB(x.km_mun))),
+    linB("Km contratado", kmB(o.km_contrato))]);
+}
+// elemento do mapa mais perto do clique (em px), por prioridade: o polígono do município é desenhado por cima das
+// rodovias no mesmo canvas e "ganharia" o clique; aqui a rodovia/obra/projeto/localidade vem antes do município
+function elementoEm(e) {
+  const p = e.layerPoint;
+  const grupos = [[camadas.loc, htmlLoc, 9], [camadas.projP, f => htmlObra(f, true), 13], [camadas.dorP, f => htmlObra(f, false), 11],
+    [camadas.dorL, f => htmlObra(f, false), 8], [camadas.projL, f => htmlObra(f, true), 8], [camadas.sre, htmlSRE, 7], [camadas.snv, htmlSNV, 7]];
+  for (const [g, fn, tol] of grupos) {
+    if (!g || !mapa.hasLayer(g)) continue;
+    let ach = null, melhor = tol;
+    const testa = l => {
+      if (l.eachLayer && !l.feature) { if (l.options?.interactive !== false) l.eachLayer(testa); return; }
+      if (!l.feature) return;
+      let d = Infinity;
+      if (l.getLatLng) d = mapa.latLngToLayerPoint(l.getLatLng()).distanceTo(p);
+      else if (l._parts) l._parts.forEach(pts => { for (let i = 1; i < pts.length; i++) d = Math.min(d, L.LineUtil.pointToSegmentDistance(p, pts[i - 1], pts[i])); });
+      if (d <= melhor) { melhor = d; ach = l.feature.properties; }
+    };
+    g.eachLayer(testa);
+    if (ach) return fn(ach);
+  }
+  return null;
+}
+function htmlLoc(p) { return `<div class="bt">${esc(p.n)}</div>` + tabB([linB("Tipo", esc(p.t))]); }
+function htmlMun(c) {
+  const m = A.municipios[c], s = m.situacao || {}, tot = soma(s);
+  return `<div class="bt">${esc(m.nome)}/GO</div>` + tabB([
+    linB("Na seleção", SEL.includes(c) ? "Sim" : "Não"), linB("Extensão SRE", km2(tot)),
+    ...ORD.filter(k => s[k]).map(k => linB(SIT[k][0], km2(s[k]) + ` (${br(s[k] / tot * 100, 1)}%)`))]);
+}
 
 /* ---------------- tema claro / escuro ---------------- */
 const escuro = () => document.documentElement.dataset.tema === "escuro";
@@ -179,10 +265,24 @@ function mostraCoord(ll, copiaJa) {
   if (copiaJa) vai();
 }
 let APRES = false, temaAntes = null, ctlTimer = null;
+// zoom da folha montada (vários municípios, 16/11/2026): ZF = zoom sobre o "caber na tela"; TX/TY = posição na tela
+let ZF = 1, TX = 0, TY = 0;
+const escBase = () => Math.min(window.innerWidth / FOLHA_W, window.innerHeight / FOLHA_H);
 function escalaFolha() {
-  const s = Math.min(window.innerWidth / FOLHA_W, window.innerHeight / FOLHA_H);
-  const f = $("#folha");
-  f.style.transform = `translate(${(window.innerWidth - FOLHA_W * s) / 2}px, ${(window.innerHeight - FOLHA_H * s) / 2}px) scale(${s})`;
+  const s = escBase() * ZF, W = FOLHA_W * s, H = FOLHA_H * s, vw = window.innerWidth, vh = window.innerHeight;
+  // menor que a tela: centraliza; maior: não deixa sobrar borda vazia
+  TX = W <= vw ? (vw - W) / 2 : Math.min(0, Math.max(vw - W, TX));
+  TY = H <= vh ? (vh - H) / 2 : Math.min(0, Math.max(vh - H, TY));
+  $("#folha").style.transform = `translate(${TX}px, ${TY}px) scale(${s})`;
+  document.documentElement.classList.toggle("folha-zoom", ZF > 1.001);
+  const z = $("#apres-zval"); if (z) z.textContent = Math.round(ZF * 100) + "%";
+}
+// f > 1 aproxima, f < 1 afasta, f = 0 volta a caber na tela; (cx, cy) = ponto da tela que fica parado
+function zoomFolha(f, cx = window.innerWidth / 2, cy = window.innerHeight / 2) {
+  if (!APRES || IMG) return;
+  const s = escBase() * ZF, nz = f === 0 ? 1 : Math.min(6, Math.max(1, ZF * f)), s2 = escBase() * nz;
+  TX = cx - (cx - TX) * s2 / s; TY = cy - (cy - TY) * s2 / s; ZF = nz;
+  fechaBalao(); escalaFolha(); mostraCtl();
 }
 // encolhe (zoom) os blocos de cada coluna até tudo caber na folha; o mapa não encolhe
 function ajustaFolha() {
@@ -238,6 +338,7 @@ let IMG = false;
 const SEM_IMG = new Set();                            // municípios cuja imagem não carregou: usam a folha montada
 function modoApres() {
   if (!APRES) return;
+  ZF = 1; fechaBalao();                               // outro município: volta a caber na tela
   const cod = SEL[0];
   IMG = SEL.length === 1 && !SEM_IMG.has(cod);
   document.documentElement.classList.toggle("apres", !IMG);
@@ -261,8 +362,8 @@ $("#apres-img").addEventListener("click", ev => {
 });
 function saiApres() {
   if (!APRES) return;
-  APRES = false; IMG = false;
-  document.documentElement.classList.remove("apres", "apres-img");
+  APRES = false; IMG = false; ZF = 1; fechaBalao();
+  document.documentElement.classList.remove("apres", "apres-img", "folha-zoom");
   $("#apres-img").hidden = true; $("#apres-img").classList.remove("zoom");
   $("#apres-ctl").hidden = true;
   const f = $("#folha"); f.style.transform = "";
@@ -278,11 +379,45 @@ $("#apres-sair").onclick = saiApres;
 $("#apres-ant").onclick = () => $("#ant").click();
 $("#apres-prox").onclick = () => $("#prox").click();
 document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement) saiApres(); else if (!IMG) { escalaFolha(); ajustaFolha(); } });
-window.addEventListener("resize", () => { if (APRES && !IMG) { escalaFolha(); ajustaFolha(); } });
+window.addEventListener("resize", () => { if (APRES && !IMG) { ZF = 1; escalaFolha(); ajustaFolha(); } });
 document.addEventListener("mousemove", () => { if (APRES) mostraCtl(); });
+$("#apres-zmais").onclick = () => zoomFolha(1.25);
+$("#apres-zmenos").onclick = () => zoomFolha(0.8);
+$("#apres-zajusta").onclick = () => zoomFolha(0);
+// Ctrl + roda do mouse: zoom no ponto do cursor (também sobre o mapa); com zoom, a roda sozinha rola a folha
+window.addEventListener("wheel", e => {
+  if (!APRES || IMG) return;
+  if (e.ctrlKey) { e.preventDefault(); e.stopPropagation(); zoomFolha(e.deltaY < 0 ? 1.2 : 1 / 1.2, e.clientX, e.clientY); return; }
+  if (ZF > 1.001 && !e.target.closest?.(".mapa")) {
+    e.preventDefault(); fechaBalao();
+    TX -= e.shiftKey ? e.deltaY : e.deltaX; TY -= e.shiftKey ? 0 : e.deltaY; escalaFolha();
+  }
+}, { capture: true, passive: false });
+// com zoom, arrastar a folha (fora do mapa, que tem o próprio arraste) move a visão
+let ARR = null, ARRASTOU = false;
+$("#folha").addEventListener("pointerdown", e => {
+  if (!APRES || IMG || ZF <= 1.001 || e.button !== 0 || e.target.closest(".mapa")) return;
+  ARR = { x: e.clientX, y: e.clientY, tx: TX, ty: TY }; ARRASTOU = false;
+});
+window.addEventListener("pointermove", e => {
+  if (!ARR) return;
+  const dx = e.clientX - ARR.x, dy = e.clientY - ARR.y;
+  if (!ARRASTOU && Math.hypot(dx, dy) < 5) return;
+  if (!ARRASTOU) { ARRASTOU = true; fechaBalao(); document.documentElement.classList.add("arrastando"); }
+  TX = ARR.tx + dx; TY = ARR.ty + dy; escalaFolha();
+});
+window.addEventListener("pointerup", () => {
+  if (!ARR) return; ARR = null; document.documentElement.classList.remove("arrastando");
+  if (ARRASTOU) setTimeout(() => { ARRASTOU = false; }, 0);
+});
+window.addEventListener("click", e => { if (ARRASTOU) { e.stopPropagation(); e.preventDefault(); } }, true);   // soltar o arraste não é clique
 document.addEventListener("keydown", e => {
   if (!APRES || e.target.closest?.("input, select, textarea")) return;
-  if (e.key === "Escape") saiApres();
+  if (e.key === "Escape" && !balao.hidden) fechaBalao();
+  else if (!IMG && (e.key === "+" || e.key === "=")) zoomFolha(1.25);
+  else if (!IMG && e.key === "-") zoomFolha(0.8);
+  else if (!IMG && e.key === "0") zoomFolha(0);
+  else if (e.key === "Escape") saiApres();
   else if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); $("#prox").click(); }
   else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); $("#ant").click(); }
 });
@@ -385,24 +520,27 @@ function iniciaMapa() {
     style: { color: T_LT, weight: 2, fillColor: T_LT, fillOpacity: 0.08, dashArray: "6 4" } });
   camadas.snv = L.geoJSON(null, { renderer: rnd, pane: "vias",
     style: { color: "#33a02c", weight: 3 },
-    onEachFeature: (f, l) => l.bindTooltip(`BR-${esc(f.properties.br)} · Federal`, { sticky: true }) });
+    onEachFeature: (f, l) => { l.bindTooltip(`BR-${esc(f.properties.br)} · Federal`, { sticky: true }); balaoMapa(l, () => htmlSNV(f.properties)); } });
   camadas.sre = L.geoJSON(null, { renderer: rnd, pane: "vias", style: estiloSRE,
-    onEachFeature: (f, l) => l.bindTooltip(`<b>GO-${esc(f.properties.go)}</b> · ${esc(f.properties.sre)}<br>${SIT[f.properties.sit]?.[0] || esc(f.properties.sit)}`, { sticky: true }) });
+    onEachFeature: (f, l) => { l.bindTooltip(`<b>GO-${esc(f.properties.go)}</b> · ${esc(f.properties.sre)}<br>${SIT[f.properties.sit]?.[0] || esc(f.properties.sit)}`, { sticky: true });
+      balaoMapa(l, () => htmlSRE(f.properties)); } });
   // obras (DOR): contorno branco + cor por tipo (mesma simbologia do layout)
   const dorCasco = L.geoJSON(null, { renderer: rnd, pane: "obras", style: { color: "#ffffff", weight: 8, opacity: 0.9 }, interactive: false });
   const dorCor = L.geoJSON(null, { renderer: rnd, pane: "obras",
       style: f => ({ color: DOR_COR[f.properties.intervencao] || "#0055d6", weight: 5 }),
-      onEachFeature: (f, l) => l.bindTooltip(`<b>Obra – ${esc(f.properties.intervencao)}</b><br>${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`, { sticky: true }) });
+      onEachFeature: (f, l) => { l.bindTooltip(`<b>Obra – ${esc(f.properties.intervencao)}</b><br>${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`, { sticky: true });
+        balaoMapa(l, () => htmlObra(f.properties, false)); } });
   camadas.dorL = L.layerGroup([dorCasco, dorCor]);
   // pontos no mesmo canvas das linhas (um canvas próprio por cima bloqueava o clique nos municípios)
   camadas.dorP = L.geoJSON(null, {
     pointToLayer: (f, ll) => L.circleMarker(ll, { renderer: rnd, radius: 7, color: "#ffffff", weight: 2, fillColor: DOR_PONT, fillOpacity: 1 }),
-    onEachFeature: (f, l) => l.bindTooltip(`<b>Obra pontual – ${esc(f.properties.intervencao)}</b><br>${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`) });
+    onEachFeature: (f, l) => { l.bindTooltip(`<b>Obra pontual – ${esc(f.properties.intervencao)}</b><br>${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`);
+      balaoMapa(l, () => htmlObra(f.properties, false)); } });
   // projetos (DPJ): faixa colorida + linha branca no meio (contínua = Projeto; tracejada = Planejamento/Licitação)
   const dicaPJ = p => `<b>Projeto – ${esc(p.intervencao)} - ${esc(p.etapa)}</b><br>${esc(p.rodovia || "")} · ${esc(p.codigo || "")}`;
   const pjBase = L.geoJSON(null, { renderer: rnd, pane: "projetos",
       style: f => ({ color: PJ_COR[f.properties.intervencao] || "#666666", weight: 7, opacity: 0.95, lineCap: "round" }),
-      onEachFeature: (f, l) => l.bindTooltip(dicaPJ(f.properties), { sticky: true }) });
+      onEachFeature: (f, l) => { l.bindTooltip(dicaPJ(f.properties), { sticky: true }); balaoMapa(l, () => htmlObra(f.properties, true)); } });
   const pjTopo = L.geoJSON(null, { renderer: rnd, pane: "projetos", interactive: false,
       style: f => ({ color: "#ffffff", weight: 2.3, opacity: 1, dashArray: f.properties.etapa === "Projeto" ? null : "6 4.5",
         lineCap: f.properties.etapa === "Projeto" ? "round" : "butt" }) });
@@ -410,12 +548,13 @@ function iniciaMapa() {
   camadas.projP = L.geoJSON(null, { pane: "projP",
     pointToLayer: (f, ll) => L.marker(ll, { pane: "projP", icon: L.icon({ iconUrl: (PJ_PONT[f.properties.cat] || PJ_PONT.Projeto)[0],
       iconSize: [22, 22], iconAnchor: [11, 11] }) }),
-    onEachFeature: (f, l) => l.bindTooltip(`<b>Projeto pontual – ${esc(f.properties.cat)}</b><br>${esc(f.properties.intervencao)} · ${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`) });
+    onEachFeature: (f, l) => { l.bindTooltip(`<b>Projeto pontual – ${esc(f.properties.cat)}</b><br>${esc(f.properties.intervencao)} · ${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`);
+      balaoMapa(l, () => htmlObra(f.properties, true)); } });
   camadas.loc = L.geoJSON(null, {
     pointToLayer: (f, ll) => L.circleMarker(ll, { renderer: rnd, radius: /Sede|Capital/.test(f.properties.t) ? 4 : 2.5, color: "#222",
       weight: 1, fillColor: "#fff", fillOpacity: 1 }),
-    onEachFeature: (f, l) => l.bindTooltip(esc(f.properties.n), { permanent: /Sede|Capital/.test(f.properties.t),
-      direction: "right", offset: [5, 0], className: "rot-loc" }) });
+    onEachFeature: (f, l) => { l.bindTooltip(esc(f.properties.n), { permanent: /Sede|Capital/.test(f.properties.t),
+      direction: "right", offset: [5, 0], className: "rot-loc" }); balaoMapa(l, () => htmlLoc(f.properties)); } });
   // [camada, fonte] que só recebem a área do município selecionado
   AREA = [[camadas.perimetro, "perimetro_urbano"], [camadas.municipios, "municipios"], [camadas.snv, "snv_federal"],
     [camadas.sre, "sre"], [pjBase, "dpj_linhas"], [pjTopo, "dpj_linhas"], [dorCasco, "dor_linhas"], [dorCor, "dor_linhas"],
@@ -426,7 +565,10 @@ function iniciaMapa() {
   // pelo ponto, entre os 246. Modo Combinar (ou Ctrl/Shift + clique): soma/tira da seleção; senão abre só ele
   mapa.on("click", e => {
     if (COORD) { mostraCoord(e.latlng, true); return; }   // modo coordenadas: o clique copia, não troca município
-    const f = municipioEm(e.latlng); if (!f) return;
+    const f = municipioEm(e.latlng);
+    // apresentação: o clique mostra o balão do elemento (ou do município); não mexe na seleção (trocar = setas ← →)
+    if (APRES && !IMG) { const h = elementoEm(e) || (f && htmlMun(f.properties.cod)); if (h) abreBalao(e.originalEvent, h); return; }
+    if (!f) return;
     const c = f.properties.cod, oe = e.originalEvent || {};
     if (COMB || oe.ctrlKey || oe.shiftKey || oe.metaKey) alterna(c);
     else if (c !== atual || SEL.length > 1) seleciona(c);
