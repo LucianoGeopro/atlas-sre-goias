@@ -164,11 +164,14 @@ $("#copiar").onclick = async () => {
 const FOLHA_W = 1680, FOLHA_H = Math.round(1680 / Math.SQRT2);   // proporção A3 (420 × 297 mm)
 /* ---------------- copiar coordenadas do mapa, graus decimais (16/11/2026) ---------------- */
 let COORD = false;
-const fmtCoord = ll => ll.lat.toFixed(6) + ", " + ll.lng.toFixed(6);   // "lat, lon" (ponto decimal, aceito por Google Maps/QGIS)
+// SIRGAS 2000 (EPSG:4674), graus decimais. Transformação oficial WGS 84 -> SIRGAS 2000 = EPSG:15894
+// (parâmetros 0,0,0: mesmos valores numéricos), então a conversão é a identidade.
+const paraSirgas = ll => ({ lat: ll.lat, lng: ll.lng });
+const fmtCoord = ll => { const s = paraSirgas(ll); return s.lat.toFixed(6) + ", " + s.lng.toFixed(6); };   // "lat, lon" (ponto decimal, aceito por Google Maps/QGIS)
 function mostraCoord(ll, copiaJa) {
-  const txt = fmtCoord(ll), d = document.createElement("div"); d.className = "pop-coord";
-  d.innerHTML = `<div class="pc-tit">Coordenada (graus decimais, WGS 84)</div><code>${txt}</code>
-    <div class="pc-lin">Lat ${ll.lat.toFixed(6)} · Lon ${ll.lng.toFixed(6)}</div><button type="button">📋 Copiar</button>`;
+  const s = paraSirgas(ll), txt = fmtCoord(ll), d = document.createElement("div"); d.className = "pop-coord";
+  d.innerHTML = `<div class="pc-tit">Coordenada (graus decimais, SIRGAS 2000)</div>
+    <div class="pc-lin">Lat <code>${s.lat.toFixed(6)}</code> · Lon <code>${s.lng.toFixed(6)}</code></div><button type="button">📋 Copiar</button>`;
   const b = d.querySelector("button");
   const vai = async () => { if (await copiaTexto(txt, "Copie a coordenada:")) { b.textContent = "✓ Copiado"; b.classList.add("ok"); } };
   b.onclick = e => { e.stopPropagation(); vai(); };
