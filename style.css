@@ -358,6 +358,71 @@ html.apres-img, html.apres-img body { overflow: hidden; }
 [data-tema=escuro] .busca .link-btn.ok { color: #111; background: var(--brand); border-color: var(--brand); }
 .busca #ver-capa { margin-left: auto; }
 .busca #ver-capa + .tema-btn { margin-left: 0; }
+.busca #ver-sobre + .tema-btn { margin-left: 0; }
+
+/* sobre os dados (16/11/2026): página de leitura por cima da capa e do atlas */
+.capa-abas { display: flex; gap: 4px; margin: -6px 0 12px; border-bottom: 2px solid var(--cartao); }
+.capa-abas button { font: bold 13px Arial, sans-serif; color: var(--muted); background: none; border: 0; border-bottom: 3px solid transparent;
+  margin-bottom: -2px; padding: 6px 10px; cursor: pointer; }
+.capa-abas button.ativa { color: var(--brand); border-bottom-color: var(--verde); }
+.capa-abas button:not(.ativa):hover, .capa-abas button:focus-visible { color: var(--brand); outline: none; border-bottom-color: var(--grade); }
+.link-texto { font: inherit; color: var(--verde); background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; }
+.sobre { position: fixed; inset: 0; z-index: 5100; overflow: auto; background: #eef1ee; color: var(--ink); }
+.sobre[hidden] { display: none; }
+.sobre-aberto body { overflow: hidden; }
+.sobre-barra { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 8px 16px;
+  background: var(--verde); color: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.2); }
+.sobre-barra-tit { flex: 1; font-weight: bold; font-size: 14px; text-align: center; min-width: 0; }
+.sobre-btn { flex: none; font: bold 13px Arial, sans-serif; color: var(--verde); background: #fff; border: 0; border-radius: 4px;
+  padding: 8px 12px; cursor: pointer; }
+.sobre-btn:hover, .sobre-btn:focus-visible { outline: 3px solid #f2c200; outline-offset: 1px; }
+.sobre-corpo { max-width: 960px; margin: 16px auto 32px; padding: 24px 32px; background: #fff; border-radius: 4px;
+  box-shadow: 0 4px 22px rgba(0,0,0,.12); font-size: 15px; line-height: 1.6; }
+.sobre-corpo h2 { margin: 0 0 10px; font-size: 26px; color: var(--brand); }
+.sobre-corpo h3 { margin: 28px 0 8px; padding-bottom: 4px; font-size: 16px; color: var(--brand); text-transform: uppercase;
+  letter-spacing: .3px; border-bottom: 2px solid var(--cartao); }
+.sobre-corpo h4 { margin: 0 0 6px; font-size: 15px; color: var(--brand); }
+.sobre-corpo p { margin: 8px 0; }
+.sobre-corpo ul, .sobre-corpo ol { margin: 6px 0; padding-left: 22px; }
+.sobre-corpo li { margin: 5px 0; }
+.sobre-indice { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 6px; }
+.sobre-indice button { font: 13px Arial, sans-serif; color: var(--brand); background: var(--cartao); border: 1px solid transparent;
+  border-radius: 14px; padding: 5px 12px; cursor: pointer; }
+.sobre-indice button:hover, .sobre-indice button:focus-visible { border-color: var(--verde); outline: none; }
+.sobre-cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 10px 0 14px; }
+.sobre-cartao { background: var(--cartao); border-radius: 4px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.sobre-cartao .t { font-size: 12px; font-weight: bold; color: var(--ink2); text-transform: uppercase; letter-spacing: .2px; }
+.sobre-cartao b { font-size: 22px; color: var(--brand); line-height: 1.25; }
+.sobre-cartao .s { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+.sobre-corpo .tab-rolagem { max-width: 560px; }
+.sobre-tab { font-size: 14px; }
+.sobre-tab td:first-child, .sobre-tab th:first-child { text-align: left; }
+.sobre-tab tr.tot td { font-weight: bold; border-top: 2px solid var(--brand); }
+.sb-cor { display: inline-block; width: 22px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: middle;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+.sobre-ind { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.sobre-card { border: 1px solid #dfe3df; border-left: 4px solid var(--verde); border-radius: 4px; padding: 12px 14px; }
+.sobre-card p { margin: 6px 0 0; font-size: 14px; }
+.sobre-card .f { font-family: Consolas, "Courier New", monospace; font-size: 13px; background: var(--cartao); color: var(--ink);
+  padding: 6px 8px; border-radius: 3px; }
+.sobre-sit { list-style: none; padding-left: 0 !important; }
+.sobre-nota { color: var(--muted); font-size: 13px; }
+.sobre-fim { display: block; margin: 24px auto 0; }
+@media (max-width: 760px) {
+  .sobre-corpo { margin: 0; padding: 16px; border-radius: 0; font-size: 14.5px; }
+  .sobre-corpo h2 { font-size: 21px; }
+  .sobre-barra { padding: 8px; gap: 6px; }
+  .sobre-barra-tit { font-size: 12.5px; }
+  .sobre-btn { padding: 7px 9px; font-size: 12.5px; }
+}
+[data-tema=escuro] .sobre { background: #121416; }
+[data-tema=escuro] .sobre-corpo { background: var(--sup); box-shadow: 0 4px 22px rgba(0,0,0,.6); }
+[data-tema=escuro] .sobre-barra { background: #1f5b46; }
+[data-tema=escuro] .sobre-btn { color: #111; background: var(--brand); }
+[data-tema=escuro] .sobre-card { border-color: var(--borda); border-left-color: var(--brand); }
+[data-tema=escuro] .sobre-tab tr.tot td { border-top-color: var(--brand); }
+[data-tema=escuro] .link-texto { color: var(--brand); }
+[data-tema=escuro] .capa-abas button.ativa { border-bottom-color: var(--brand); }
 
 /* seleção de vários municípios (13/11/2026) */
 .busca { flex-wrap: wrap; }
