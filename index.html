@@ -6,7 +6,7 @@
 <title>Atlas SRE Municípios – GOINFRA</title>
 <meta name="description" content="Sistema Rodoviário Estadual – SRE, atualizado mensalmente: situação da malha, indicadores, obras e projetos e composição da malha de cada município de Goiás.">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css?v=20">
+<link rel="stylesheet" href="style.css?v=21">
 <script>try { if (/tema=escuro/.test(location.search) || localStorage.getItem("atlas-tema") === "escuro") document.documentElement.dataset.tema = "escuro"; } catch (e) { if (/tema=escuro/.test(location.search)) document.documentElement.dataset.tema = "escuro"; }
 // página inicial (16/11/2026): aparece ao abrir o link principal; link de município (#código) ou ?capa=0 vai direto ao atlas;
 // F5 mantém o que estava na tela (capa aberta ou fechada) — a aba guarda o estado em sessionStorage
@@ -24,6 +24,10 @@
 <section id="capa" class="capa" aria-label="Capa do atlas">
   <img class="capa-img" src="img/capa.jpg" alt="Caderno de Obras – Recorte Municipal. SRE de outubro/2026, 246 municípios goianos: situação da malha estadual com obras e indicadores. GOINFRA, SEINFRA, Governo de Goiás." width="1902" height="1345">
   <div class="capa-resumo">
+    <div class="capa-abas" role="tablist" aria-label="Página inicial">
+      <button type="button" role="tab" aria-selected="true" class="ativa">Início</button>
+      <button type="button" role="tab" aria-selected="false" class="abre-sobre">ⓘ Sobre os dados</button>
+    </div>
     <h2 class="capa-tit">Atlas do SRE por município</h2>
     <p class="capa-mes">SRE <span class="mes-min">…</span></p>
     <p id="capa-numeros">Situação da malha rodoviária estadual nos municípios goianos.</p>
@@ -38,8 +42,136 @@
     <h3>Como usar</h3>
     <p>Busque o município na barra do topo, use ‹ › para navegar, “Combinar municípios” para somar vários
       e “⛶ Expandir mapa” para ver só o mapa.</p>
-    <p class="capa-nota">Base atualizada mensalmente.</p>
+    <p class="capa-nota">Base atualizada mensalmente. Veja em <button type="button" class="link-texto abre-sobre">Sobre os dados</button>
+      como cada número é calculado.</p>
     <button id="capa-entrar" class="capa-entrar" type="button">Acessar o atlas ›</button>
+  </div>
+</section>
+
+<!-- sobre os dados (16/11/2026): o que são as estatísticas, como são feitas e para que servem -->
+<section id="sobre" class="sobre" hidden aria-label="Sobre os dados">
+  <div class="sobre-barra">
+    <button id="sobre-voltar" type="button" class="sobre-btn">‹ Voltar</button>
+    <span class="sobre-barra-tit">Sobre os dados – SRE <span class="mes-min">…</span></span>
+    <button type="button" class="sobre-btn sobre-entrar">Acessar o atlas ›</button>
+  </div>
+  <div class="sobre-corpo">
+    <h2>Sobre os dados do atlas</h2>
+    <nav class="sobre-indice" aria-label="Seções">
+      <button type="button" data-ir="s-oque">O que é</button>
+      <button type="button" data-ir="s-numeros">Goiás em números</button>
+      <button type="button" data-ir="s-fontes">Fontes</button>
+      <button type="button" data-ir="s-como">Como é calculado</button>
+      <button type="button" data-ir="s-ind">Indicadores</button>
+      <button type="button" data-ir="s-sit">Situações da malha</button>
+      <button type="button" data-ir="s-graf">Gráficos e quadros</button>
+      <button type="button" data-ir="s-uso">Importância e usos</button>
+      <button type="button" data-ir="s-cuid">Cuidados na leitura</button>
+    </nav>
+
+    <h3 id="s-oque">O que é o atlas</h3>
+    <p>O atlas apresenta o <b>Sistema Rodoviário Estadual – SRE</b> de Goiás recortado município a município. Para cada um dos
+      <b class="sb-mun">246</b> municípios goianos há uma página com a situação da malha estadual que passa pelo seu território, seus
+      indicadores, as obras e os projetos da GOINFRA e o peso do município no lote de manutenção e no estado.</p>
+    <p>É a versão interativa do <b>Caderno de Obras – Recorte Municipal</b>: o mesmo conteúdo da página impressa, com mapa navegável,
+      busca, combinação de municípios e modo apresentação. A base é a do SRE de <b class="mes-min">…</b> e é atualizada todo mês.</p>
+
+    <h3 id="s-numeros">Goiás em números – SRE <span class="mes-min">…</span></h3>
+    <div class="sobre-cartoes" id="sobre-cartoes"></div>
+    <div class="tab-rolagem"><table class="tab sobre-tab" id="sobre-sit"></table></div>
+    <p class="sobre-nota">A soma dos municípios é igual ao total de Goiás: os mesmos números aparecem em todas as páginas.</p>
+
+    <h3 id="s-fontes">Fontes dos dados</h3>
+    <ul>
+      <li><b>Malha rodoviária:</b> SRE-GO da GOINFRA, base de <span class="mes-min">…</span> — trechos, situação, jurisdição, faixa de domínio e decretos.</li>
+      <li><b>Limites municipais e áreas:</b> malha municipal do IBGE.</li>
+      <li><b>Obras e projetos:</b> cadastros da GOINFRA de <span class="sb-cad">…</span>.</li>
+      <li><b>Lotes de manutenção:</b> delimitação dos lotes da GOINFRA.</li>
+      <li><b>Mapa de fundo e camadas de apoio</b> (perímetros urbanos, localidades, rodovias federais, hidrografia etc.): ANA, ANTT, DNIT,
+        FUNAI, IBGE, INCRA, MMA, MUBDG, SIEG e SGP.</li>
+    </ul>
+
+    <h3 id="s-como">Como é calculado</h3>
+    <ol>
+      <li><b>Recorte:</b> cada trecho do SRE é cortado pelo limite do município; só a parte dentro do território entra nas contas.</li>
+      <li><b>Medição:</b> as extensões são medidas sobre o elipsoide GRS80 (SIRGAS 2000), o que dá a extensão real no terreno,
+        sem a distorção das projeções planas.</li>
+      <li><b>O que entra nos totais:</b> só os trechos estaduais principais. Trechos coincidentes (que passam pela mesma pista de outra
+        rodovia) e federais aparecem no quadro de trechos, mas não somam, para que nenhum quilômetro seja contado duas vezes.</li>
+      <li><b>Divisas:</b> trecho, obra ou projeto que cruza a divisa aparece nos dois municípios, cada um com a sua parte em Km.</li>
+      <li><b>Conferência:</b> a soma dos 246 municípios fecha com o total do estado e dos lotes.</li>
+      <li><b>Precisão:</b> extensões em Km com 2 casas decimais e percentuais com 1 casa, sem arredondar as partes para fechar o total.</li>
+      <li><b>Combinação de municípios:</b> Km, área e faixa de domínio são somados; o que cruza a divisa entre municípios selecionados
+        conta uma vez só; os índices são recalculados sobre o total da seleção.</li>
+    </ol>
+
+    <h3 id="s-ind">Os indicadores</h3>
+    <div class="sobre-ind">
+      <div class="sobre-card"><h4>Extensão no município</h4>
+        <p class="f">Soma, em Km, dos trechos estaduais principais dentro do município.</p>
+        <p><b>Representa</b> o tamanho da malha estadual sob responsabilidade da GOINFRA no território. O cartão também mostra quantos
+          trechos e rodovias passam pelo município.</p></div>
+      <div class="sobre-card"><h4>Índice de pavimentação</h4>
+        <p class="f">(Pavimentada + Duplicada) ÷ extensão no município × 100</p>
+        <p><b>Representa</b> quanto da malha estadual já está pavimentada. É comparado com o índice de Goiás
+          (<span class="sb-ip">…</span>) para mostrar se o município está acima ou abaixo da média.</p></div>
+      <div class="sobre-card"><h4>Após as obras de pavimentação</h4>
+        <p class="f">(Pavimentada + Duplicada + Em obras de pavimentação) ÷ extensão × 100</p>
+        <p><b>Representa</b> o índice que o município terá quando as obras de pavimentação em andamento forem concluídas — o efeito
+          direto do investimento em curso.</p></div>
+      <div class="sobre-card"><h4>Densidade rodoviária</h4>
+        <p class="f">Extensão no município ÷ área do município × 1.000 (Km por 1.000 Km²)</p>
+        <p><b>Representa</b> quanta rodovia estadual existe para cada 1.000 Km² de território, o que permite comparar municípios de
+          tamanhos diferentes. Goiás: <span class="sb-dens">…</span>.</p></div>
+      <div class="sobre-card"><h4>Faixa de domínio</h4>
+        <p class="f">Σ (extensão do trecho × largura cadastrada), em hectares</p>
+        <p><b>Representa</b> a área de terra reservada às rodovias estaduais no município, base para controle de ocupação, acessos e
+          desapropriações. O cartão informa os trechos com largura cadastrada e os que têm decreto de faixa; a nota cita os decretos
+          (por exemplo, o Decreto 5.374/2001).</p></div>
+    </div>
+
+    <h3 id="s-sit">Situações da malha</h3>
+    <p>Cada trecho do SRE tem uma situação física cadastrada. As cores são as mesmas do mapa e dos gráficos:</p>
+    <ul class="sobre-sit" id="sobre-sit-lista"></ul>
+
+    <h3 id="s-graf">Gráficos e quadros da página do município</h3>
+    <ul>
+      <li><b>Mapa da situação atual:</b> rodovias do SRE pela situação, obras e projetos, perímetros urbanos e localidades.</li>
+      <li><b>Por situação:</b> quantos Km de cada situação existem no município.</li>
+      <li><b>Por rodovia:</b> a situação de cada rodovia (GO) dentro do município.</li>
+      <li><b>Urbano × rural:</b> Km dentro e fora do perímetro urbano — trechos urbanos têm exigências próprias de travessia,
+        segurança e acessos.</li>
+      <li><b>Peso do município:</b> quanto os Km do município representam do lote de manutenção e do estado, em cada situação
+        (Km do município ÷ Km do lote ou do estado).</li>
+      <li><b>Obras e projetos:</b> gráfico e quadro com as obras em andamento e os projetos, por intervenção, com a extensão no
+        município e a do contrato.</li>
+      <li><b>SRE – quadro de trechos:</b> todos os trechos que passam pelo município, com início, fim, quilometragem, extensão total,
+        extensão e percentual dentro do município, situação e jurisdição.</li>
+      <li><b>Comparação entre municípios</b> (ao combinar): os indicadores de cada município selecionado lado a lado, com o total da seleção.</li>
+    </ul>
+
+    <h3 id="s-uso">Importância e usos</h3>
+    <ul>
+      <li><b>Planejamento e priorização:</b> mostra onde a malha ainda não é pavimentada e onde o investimento muda mais o índice.</li>
+      <li><b>Manutenção por lote:</b> o peso de cada município no lote ajuda a dimensionar equipes, contratos e serviços.</li>
+      <li><b>Atendimento às prefeituras e à população:</b> responde de forma rápida e padronizada quais rodovias estaduais passam pelo
+        município, em que situação estão e o que está sendo feito nelas.</li>
+      <li><b>Transparência:</b> os mesmos números, com a mesma metodologia, para todos os municípios, atualizados todo mês.</li>
+      <li><b>Comparação regional:</b> a combinação de municípios permite analisar regiões, consórcios e corredores.</li>
+    </ul>
+
+    <h3 id="s-cuid">Cuidados na leitura</h3>
+    <ul>
+      <li><b>Projeto não é obra:</b> projetos estão em projeto, planejamento ou licitação — são intervenções futuras, não obras em execução.</li>
+      <li><b>Data de corte:</b> o SRE é o de <span class="mes-min">…</span> e os cadastros de obras e projetos são de <span class="sb-cad">…</span>;
+        mudanças posteriores entram na próxima atualização.</li>
+      <li><b>Recorte municipal:</b> por ser medido dentro do limite do IBGE, o valor de um município pode diferir da extensão
+        oficial de um trecho inteiro ou de outras bases.</li>
+      <li><b>Somas entre municípios:</b> para somar municípios, use “Combinar municípios”, que não conta duas vezes o que cruza a divisa.</li>
+    </ul>
+    <p class="sobre-nota">Diretoria de Planejamento – DPL · Gerência da Rede Física – GEREF · GOINFRA. Dúvidas: (62) 3265-4149 ·
+      redefisica.goinfra@goias.gov.br</p>
+    <button type="button" class="capa-entrar sobre-entrar sobre-fim">Acessar o atlas ›</button>
   </div>
 </section>
 <div id="folha" class="folha">
@@ -59,6 +191,7 @@
   <button id="apres" class="link-btn" type="button" title="Ver a página do município como no caderno impresso, em tela cheia">▣ Modo apresentação</button>
   <select id="mes" class="mes-sel" aria-label="Mês da base do SRE" title="Mês da base do SRE" hidden></select>
   <button id="ver-capa" class="tema-btn" type="button" title="Ver a capa">Capa</button>
+  <button id="ver-sobre" class="tema-btn abre-sobre" type="button" title="O que são os dados e como são calculados">ⓘ Sobre os dados</button>
   <button id="tema" class="tema-btn" type="button" title="Alternar tema claro/escuro">🌙 Tema escuro</button>
   <div id="selecao" class="selecao" hidden aria-live="polite"></div>
 </nav>
@@ -131,6 +264,6 @@
 <div id="carregando" class="carregando">Carregando o atlas…</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="app.js?v=19"></script>
+<script src="app.js?v=20"></script>
 </body>
 </html>
