@@ -240,6 +240,24 @@ function iniciaMapa() {
     onAdd() { const b = L.DomUtil.create("button", "btn-mapa"); b.textContent = "⤢ Município"; b.title = "Voltar ao município";
       L.DomEvent.on(b, "click", e => { L.DomEvent.stop(e); enquadra(); }); return b; } });
   new Volta().addTo(mapa);
+  // expandir só o mapa na tela toda (16/11/2026); Esc ou "✕ Fechar" volta
+  const Expande = L.Control.extend({ options: { position: "topleft" },
+    onAdd() { const b = L.DomUtil.create("button", "btn-mapa btn-expande"); b.type = "button";
+      L.DomEvent.on(b, "click", e => { L.DomEvent.stop(e); expandeMapa(!$("#mapa").classList.contains("mapa-cheio")); });
+      this._b = b; return b; } });
+  const ex = new Expande().addTo(mapa);
+  const rotuloExp = cheio => { ex._b.textContent = cheio ? "✕ Fechar" : "⛶ Expandir mapa";
+    ex._b.title = cheio ? "Fechar o mapa expandido (Esc)" : "Ver só o mapa, na tela toda"; ex._b.setAttribute("aria-pressed", cheio); };
+  rotuloExp(false);
+  window.expandeMapa = cheio => {
+    const c = mapa.getCenter(), z = mapa.getZoom();
+    $("#mapa").classList.toggle("mapa-cheio", cheio);
+    document.documentElement.classList.toggle("mapa-expandido", cheio);
+    rotuloExp(cheio);
+    mapa.invalidateSize();
+    mapa.setView(c, z, { animate: false });   // mantém o que a pessoa estava vendo
+  };
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#mapa").classList.contains("mapa-cheio")) expandeMapa(false); });
   // rótulos só quando o zoom muda; arrastar só redesenha a grade (13/11/2026: arrasto ficava lento)
   mapa.on("zoomend", atualizaRotulos);
   mapa.on("moveend", () => { if (mapa.hasLayer(camadas.grade)) desenhaGrade(); });
