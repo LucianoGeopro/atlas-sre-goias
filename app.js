@@ -141,14 +141,18 @@ function linkAtual() {
   const p = new URLSearchParams(location.search); p.delete("capa"); p.delete("tema");
   return location.origin + location.pathname + (p.toString() ? "?" + p : "") + "#" + SEL.join(",");
 }
-$("#copiar").onclick = async () => {
-  const b = $("#copiar"), url = linkAtual();
+async function copiaTexto(txt, rotulo) {   // área de transferência, com reserva para navegador sem permissão
   let ok = false;
-  try { await navigator.clipboard.writeText(url); ok = true; } catch (e) {
-    const t = document.createElement("textarea"); t.value = url; t.style.position = "fixed"; t.style.opacity = "0";
+  try { await navigator.clipboard.writeText(txt); ok = true; } catch (e) {
+    const t = document.createElement("textarea"); t.value = txt; t.style.position = "fixed"; t.style.opacity = "0";
     document.body.appendChild(t); t.select(); try { ok = document.execCommand("copy"); } catch (e2) {} t.remove();
   }
-  if (!ok) { window.prompt("Copie o link:", url); return; }
+  if (!ok) window.prompt(rotulo || "Copie:", txt);
+  return ok;
+}
+$("#copiar").onclick = async () => {
+  const b = $("#copiar"), url = linkAtual();
+  if (!await copiaTexto(url, "Copie o link:")) return;
   b.textContent = "✓ Link copiado"; b.classList.add("ok");
   clearTimeout(b._t); b._t = setTimeout(() => { b.textContent = "🔗 Copiar link"; b.classList.remove("ok"); }, 2200);
 };
@@ -156,6 +160,19 @@ $("#copiar").onclick = async () => {
 // a #folha (cabeçalho, página e rodapé) vira uma página A3 deitada de tamanho fixo, como o caderno exportado do QGIS,
 // e é escalada para caber na tela; sempre no tema claro (papel); ← → trocam o município, Esc sai
 const FOLHA_W = 1680, FOLHA_H = Math.round(1680 / Math.SQRT2);   // proporção A3 (420 × 297 mm)
+/* ---------------- copiar coordenadas do mapa, graus decimais (16/11/2026) ---------------- */
+let COORD = false;
+const fmtCoord = ll => ll.lat.toFixed(6) + ", " + ll.lng.toFixed(6);   // "lat, lon" (ponto decimal, aceito por Google Maps/QGIS)
+function mostraCoord(ll, copiaJa) {
+  const txt = fmtCoord(ll), d = document.createElement("div"); d.className = "pop-coord";
+  d.innerHTML = `<div class="pc-tit">Coordenada (graus decimais, WGS 84)</div><code>${txt}</code>
+    <div class="pc-lin">Lat ${ll.lat.toFixed(6)} · Lon ${ll.lng.toFixed(6)}</div><button type="button">📋 Copiar</button>`;
+  const b = d.querySelector("button");
+  const vai = async () => { if (await copiaTexto(txt, "Copie a coordenada:")) { b.textContent = "✓ Copiado"; b.classList.add("ok"); } };
+  b.onclick = e => { e.stopPropagation(); vai(); };
+  L.popup({ className: "popup-coord", autoPan: false, closeButton: true }).setLatLng(ll).setContent(d).openOn(mapa);
+  if (copiaJa) vai();
+}
 let APRES = false, temaAntes = null, ctlTimer = null;
 function escalaFolha() {
   const s = Math.min(window.innerWidth / FOLHA_W, window.innerHeight / FOLHA_H);
@@ -403,6 +420,7 @@ function iniciaMapa() {
   // clique em qualquer ponto do mapa (também sobre rodovia, obra ou área ainda não carregada): acha o município
   // pelo ponto, entre os 246. Modo Combinar (ou Ctrl/Shift + clique): soma/tira da seleção; senão abre só ele
   mapa.on("click", e => {
+    if (COORD) { mostraCoord(e.latlng, true); return; }   // modo coordenadas: o clique copia, não troca município
     const f = municipioEm(e.latlng); if (!f) return;
     const c = f.properties.cod, oe = e.originalEvent || {};
     if (COMB || oe.ctrlKey || oe.shiftKey || oe.metaKey) alterna(c);
@@ -458,6 +476,24 @@ function iniciaMapa() {
     mapa.setView(c, z, { animate: false });   // mantém o que a pessoa estava vendo
   };
   document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#mapa").classList.contains("mapa-cheio")) expandeMapa(false); });
+  // copiar coordenadas em graus decimais (16/11/2026): botão liga o modo (cursor em cruz, leitura ao vivo,
+  // clique copia "lat, lon"); fora do modo, botão direito (ou toque longo) abre o mesmo balão com "Copiar"
+  const Coord = L.Control.extend({ options: { position: "topleft" },
+    onAdd() { const b = L.DomUtil.create("button", "btn-mapa btn-coord"); b.type = "button";
+      b.textContent = "⌖ Coordenadas"; b.title = "Clique no mapa para copiar a coordenada (graus decimais)";
+      L.DomEvent.on(b, "click", e => { L.DomEvent.stop(e); ligaCoord(!COORD); }); this._b = b; return b; } });
+  const co = new Coord().addTo(mapa);
+  const Leitura = L.Control.extend({ options: { position: "bottomleft" },
+    onAdd() { this._d = L.DomUtil.create("div", "leitura-coord"); this._d.hidden = true; return this._d; } });
+  const lei = new Leitura().addTo(mapa);
+  const ligaCoord = on => {
+    COORD = on; co._b.classList.toggle("ativo", on); co._b.setAttribute("aria-pressed", on);
+    $("#mapa").classList.toggle("modo-coord", on); lei._d.hidden = !on;
+    lei._d.textContent = "Clique no mapa para copiar"; if (!on) mapa.closePopup();
+  };
+  mapa.on("mousemove", e => { if (COORD) lei._d.textContent = fmtCoord(e.latlng); });
+  mapa.on("contextmenu", e => mostraCoord(e.latlng, false));
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && COORD && !$("#mapa").classList.contains("mapa-cheio")) ligaCoord(false); });
   // rótulos só quando o zoom muda; arrastar só redesenha a grade (13/11/2026: arrasto ficava lento)
   mapa.on("zoomend", atualizaRotulos);
   mapa.on("moveend", () => { if (mapa.hasLayer(camadas.grade)) desenhaGrade(); });
