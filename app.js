@@ -73,7 +73,9 @@ function fechaCapa() {
   if (mapa) setTimeout(() => { mapa.invalidateSize(); if (atual) enquadra(); }, 50);
 }
 $("#capa-entrar").onclick = fechaCapa;
+// 16/11/2026: ir à capa reinicia o atlas no 1º município (sem modo Combinar); o F5 com o mapa aberto não passa por aqui
 $("#ver-capa").onclick = () => { document.documentElement.classList.add("capa-aberta"); guarda("atlas-capa", "1");
+  if (A && LISTA.length) { COMB = false; selecionaLista([LISTA[0]], false); barraSelecao(); }
   window.scrollTo(0, 0); $(".capa").scrollTop = 0; $("#capa-entrar").focus(); };
 // resumo da página inicial: números do atlas.json do mês
 function resumoCapa() {
