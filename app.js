@@ -65,12 +65,41 @@ aplicaTema(escuro());
 
 /* ---------------- capa (13/11/2026) ---------------- */
 // o atlas carrega por trás enquanto a capa está aberta
+// 16/11/2026: a aba guarda (sessionStorage) se a capa está aberta e o município da tela, para o F5 manter a página
+const guarda = (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) {} };
+const lembra = k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } };
 function fechaCapa() {
-  document.documentElement.classList.remove("capa-aberta");
+  document.documentElement.classList.remove("capa-aberta"); guarda("atlas-capa", "0");
   if (mapa) setTimeout(() => { mapa.invalidateSize(); if (atual) enquadra(); }, 50);
 }
 $("#capa-entrar").onclick = fechaCapa;
-$("#ver-capa").onclick = () => { document.documentElement.classList.add("capa-aberta"); window.scrollTo(0, 0); $("#capa-entrar").focus(); };
+$("#ver-capa").onclick = () => { document.documentElement.classList.add("capa-aberta"); guarda("atlas-capa", "1");
+  window.scrollTo(0, 0); $(".capa").scrollTop = 0; $("#capa-entrar").focus(); };
+// resumo da página inicial: números do atlas.json do mês
+function resumoCapa() {
+  const g = A.goias, n = Object.keys(A.municipios).length, l = Object.keys(A.lotes).length;
+  $("#capa-numeros").innerHTML = `Situação da malha rodoviária estadual nos <b>${n}</b> municípios goianos: <b>${km2(g.total)}</b>
+    de rodovias estaduais, índice de pavimentação de <b>${br(g.idx_pav, 1)}%</b>, em ${l} lotes de manutenção.`;
+}
+
+/* ---------------- copiar o link do município aberto (16/11/2026) ---------------- */
+// o endereço da barra fica no link principal; este botão monta o link com #código(s) para enviar a alguém
+function linkAtual() {
+  const p = new URLSearchParams(location.search); p.delete("capa"); p.delete("tema");
+  return location.origin + location.pathname + (p.toString() ? "?" + p : "") + "#" + SEL.join(",");
+}
+$("#copiar").onclick = async () => {
+  const b = $("#copiar"), url = linkAtual();
+  let ok = false;
+  try { await navigator.clipboard.writeText(url); ok = true; } catch (e) {
+    const t = document.createElement("textarea"); t.value = url; t.style.position = "fixed"; t.style.opacity = "0";
+    document.body.appendChild(t); t.select(); try { ok = document.execCommand("copy"); } catch (e2) {} t.remove();
+  }
+  if (!ok) { window.prompt("Copie o link:", url); return; }
+  b.textContent = "✓ Link copiado"; b.classList.add("ok");
+  clearTimeout(b._t); b._t = setTimeout(() => { b.textContent = "🔗 Copiar link"; b.classList.remove("ok"); }, 2200);
+};
+const limpaHash = () => { if (location.hash) history.replaceState(null, "", location.pathname + location.search); };
 document.addEventListener("keydown", e => { if (e.key === "Escape" && document.documentElement.classList.contains("capa-aberta")) fechaCapa(); });
 
 /* ---------------- carga ---------------- */
@@ -86,12 +115,15 @@ async function carrega() {
     ...nomes.map(n => fetch(MENSAIS.has(n) ? `data/${MES}/${n}.geojson` : `data/${n}.geojson`)
       .then(r => r.ok ? r.json() : VAZIO).catch(() => VAZIO))]);   // mês sem projetos: camada vazia
   A = atlas; nomes.forEach((n, i) => GEO[n] = geos[i]);
-  textosDoMes(meses, MES);
+  textosDoMes(meses, MES); resumoCapa();
   LISTA = Object.entries(A.municipios).sort((a, b) => a[1].ordem - b[1].ordem).map(([cod]) => cod);
   autocompleta($("#q"), c => COMB ? alterna(c, true) : seleciona(c));
   iniciaMapa(); legenda();
-  const h = codsDoHash();
-  selecionaLista(h.length ? h : [LISTA[0]], false);
+  // link com #código abre esse(s) município(s); F5 volta ao da tela; abertura nova começa no 1º
+  let ini = codsDoHash();
+  if (!ini.length && window.ATLAS_RECARGA) ini = (lembra("atlas-sel") || "").split(",").filter(c => A.municipios[c]);
+  selecionaLista(ini.length ? ini : [LISTA[0]], false);
+  limpaHash();                                  // a barra fica no link principal: reabrir o site cai na página inicial
   $("#carregando").remove();
 }
 // #5200050 ou #5200050,5209200 (link de uma seleção)
@@ -111,7 +143,7 @@ function textosDoMes(meses, MES) {
   sel.onchange = () => {
     const p = new URLSearchParams(location.search);
     sel.value === meses[0].id ? p.delete("mes") : p.set("mes", sel.value);
-    location.href = location.pathname + (p.toString() ? "?" + p : "") + location.hash;
+    location.href = location.pathname + (p.toString() ? "?" + p : "") + "#" + SEL.join(",");
   };
 }
 
@@ -124,7 +156,9 @@ function procura(txt) {
 }
 $("#ant").onclick = () => seleciona(LISTA[(LISTA.indexOf(atual) - 1 + LISTA.length) % LISTA.length]);
 $("#prox").onclick = () => seleciona(LISTA[(LISTA.indexOf(atual) + 1) % LISTA.length]);
-window.addEventListener("hashchange", () => { const c = codsDoHash(); if (c.length && c.join() !== SEL.join()) selecionaLista(c, false); });
+window.addEventListener("hashchange", () => { const c = codsDoHash();
+  if (c.length && c.join() !== SEL.join()) selecionaLista(c, false);
+  if (c.length) { fechaCapa(); limpaHash(); } });
 
 /* ---------------- mapa ---------------- */
 function estiloSRE(f) {
@@ -493,7 +527,7 @@ function selecionaLista(cods, hist = true) {
   BBOX = ms.reduce((b, m) => [Math.min(b[0], m.bbox[0]), Math.min(b[1], m.bbox[1]), Math.max(b[2], m.bbox[2]), Math.max(b[3], m.bbox[3])],
     [1e9, 1e9, -1e9, -1e9]);
   M = multi ? agrega(SEL) : ms[0];
-  if (hist) history.replaceState(null, "", "#" + SEL.join(","));
+  guarda("atlas-sel", SEL.join(","));          // 16/11/2026: não grava mais no endereço; o F5 lê daqui
   const nomes = ms.map(m => m.nome), curto = multi && SEL.length > 3 ? `${SEL.length} municípios` : nomeLista(nomes);
   document.title = `${multi ? curto : nomes[0] + "/GO"} – Atlas SRE Municípios`;
   $("#titulo").textContent = multi ? curto : nomes[0];
