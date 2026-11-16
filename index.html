@@ -6,7 +6,7 @@
 <title>Atlas SRE Municípios – GOINFRA</title>
 <meta name="description" content="Sistema Rodoviário Estadual – SRE, atualizado mensalmente: situação da malha, indicadores, obras e projetos e composição da malha de cada município de Goiás.">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css?v=21">
+<link rel="stylesheet" href="style.css?v=22">
 <script>try { if (/tema=escuro/.test(location.search) || localStorage.getItem("atlas-tema") === "escuro") document.documentElement.dataset.tema = "escuro"; } catch (e) { if (/tema=escuro/.test(location.search)) document.documentElement.dataset.tema = "escuro"; }
 // página inicial (16/11/2026): aparece ao abrir o link principal; link de município (#código) ou ?capa=0 vai direto ao atlas;
 // F5 mantém o que estava na tela (capa aberta ou fechada) — a aba guarda o estado em sessionStorage
@@ -22,7 +22,12 @@
 </head>
 <body>
 <section id="capa" class="capa" aria-label="Capa do atlas">
-  <img class="capa-img" src="img/capa.jpg?v=2" alt="Caderno de Obras – Recorte Municipal. SRE de outubro/2026, 246 municípios goianos: situação da malha estadual com obras e indicadores. GOINFRA, SEINFRA, Governo de Goiás." width="1902" height="1345">
+  <img class="capa-img" src="img/capa.jpg?v=3" alt="Caderno de Obras – Recorte Municipal. SRE de outubro/2026, 246 municípios goianos: situação da malha estadual com obras e indicadores. GOINFRA, SEINFRA, Governo de Goiás." width="1902" height="1345">
+  <div class="capa-lado">
+  <div class="capa-destaque">
+    <p class="cd-1"><span class="sb-mun">246</span> municípios goianos</p>
+    <p class="cd-2">Situação da malha estadual com obras e indicadores</p>
+  </div>
   <div class="capa-resumo">
     <div class="capa-abas" role="tablist" aria-label="Página inicial">
       <button type="button" role="tab" aria-selected="true" class="ativa">Início</button>
@@ -45,6 +50,7 @@
     <p class="capa-nota">Base atualizada mensalmente. Veja em <button type="button" class="link-texto abre-sobre">Sobre os dados</button>
       como cada número é calculado.</p>
     <button id="capa-entrar" class="capa-entrar" type="button">Acessar o atlas ›</button>
+  </div>
   </div>
 </section>
 
