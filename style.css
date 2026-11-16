@@ -299,6 +299,59 @@ html[data-tema=escuro], [data-tema=escuro] body { background: var(--fundo); colo
 [data-tema=escuro] .capa-resumo { background: var(--sup); color: var(--ink); box-shadow: 0 4px 22px rgba(0,0,0,.6); }
 [data-tema=escuro] .capa-resumo .capa-entrar { color: #111; background: var(--brand); }
 [data-tema=escuro] .capa-mes { color: var(--brand); }
+/* modo apresentação (16/11/2026): #folha = página A3 deitada de 1680 × 1188 px, escalada pelo app.js para caber na tela.
+   Os !important vencem as regras de tela média/celular (a folha tem sempre o mesmo desenho, como o caderno). */
+.apres-pag { display: none; }
+html.apres, html.apres body { overflow: hidden; background: #2b2d2f; }
+html.apres .folha { position: fixed; left: 0; top: 0; width: 1680px; height: 1188px; transform-origin: 0 0; z-index: 2000;
+  display: flex; flex-direction: column; overflow: hidden; background: #fff; box-shadow: 0 0 30px rgba(0,0,0,.55); font-size: 13px; }
+html.apres .busca, html.apres .camadas, html.apres .filtro, html.apres .btn-expande { display: none !important; }
+html.apres .cab { flex: none; grid-template-columns: 1fr auto 1fr !important; text-align: left !important; padding: 12px 40px !important; gap: 16px !important; }
+html.apres .cab-ante { font-size: 15px !important; } html.apres .cab-titulo { font-size: 30px !important; }
+html.apres .cab-logo { justify-self: end !important; } html.apres .cab-logo img { height: 46px !important; }
+html.apres .pagina { flex: 1 1 0; min-height: 0; max-width: none; width: 100%; margin: 0; overflow: hidden;
+  display: grid !important; grid-template-columns: minmax(0, 151fr) minmax(0, 226fr) !important; gap: 0 28px !important; padding: 6px 40px 4px !important; }
+html.apres .col-esq, html.apres .col-dir { display: flex !important; flex-direction: column; min-height: 0; overflow: hidden; }
+html.apres .blk { order: 0 !important; flex: none; margin-bottom: 6px; }
+html.apres .sec { margin: 8px 0 5px; }
+html.apres .mapa { height: 510px !important; min-height: 0 !important; max-height: none !important; }
+html.apres .tab-rolagem { max-height: none !important; overflow: hidden !important; }
+html.apres .tab th { position: static; cursor: default; padding: 3px 4px; font-size: 10.5px; }
+html.apres .tab td { padding: 1.5px 4px; font-size: 10.5px; }
+html.apres .graficos svg.graf { max-height: 230px; }
+html.apres .b-peso svg.graf-comp { max-height: 200px; }
+html.apres .peso-mapa svg { max-height: 150px; }
+html.apres .b-comp svg.graf { max-height: 170px; }
+html.apres .caixa { padding: 6px 8px; }
+html.apres .legenda { grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 2px 12px; font-size: 10.5px; }
+html.apres .notas { font-size: 10.5px; line-height: 1.4; }
+html.apres .tab tr.apres-mais td { font-style: italic; color: var(--ink2); background: #fff; text-align: left; padding: 4px 6px; }
+html.apres .tab tbody tr:hover { background: inherit; }
+html.apres .cartoes { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+html.apres .graficos { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; margin: 6px 0 !important; }
+html.apres .peso { grid-template-columns: 170px minmax(0, 1fr) !important; }
+html.apres .peso-mapa { max-width: none !important; }
+html.apres .obras { grid-template-columns: minmax(0, 42fr) minmax(0, 113fr) !important; margin-top: 6px; }
+html.apres .rodape { flex: none; max-width: none; width: 100%; margin: 0; position: relative; text-align: left;
+  padding: 6px 120px 8px 40px !important; font-size: 10.5px; line-height: 1.5; }
+html.apres .apres-pag { display: block; position: absolute; right: 40px; bottom: 9px; font-weight: bold; font-size: 12px; color: var(--ink); }
+/* um município: imagem da página do caderno (layout 04 exportado do QGIS) */
+html.apres-img, html.apres-img body { overflow: hidden; }
+.apres-img { position: fixed; inset: 0; z-index: 2850; background: #2b2d2f; display: flex; align-items: center; justify-content: center;
+  overflow: hidden; cursor: zoom-in; }
+.apres-img[hidden] { display: none; }
+.apres-img img { display: block; max-width: 100%; max-height: 100%; box-shadow: 0 0 30px rgba(0,0,0,.55); background: #fff; }
+.apres-img.zoom { display: block; overflow: auto; cursor: zoom-out; }
+.apres-img.zoom img { max-width: none; max-height: none; }
+/* controles: aparecem ao mexer o mouse e somem depois de 2,5 s */
+.apres-ctl { position: fixed; inset: 0; z-index: 2900; pointer-events: none; }
+.apres-ctl[hidden] { display: none; }
+.apres-ctl button { position: absolute; pointer-events: auto; opacity: 0; transition: opacity .3s; cursor: pointer;
+  background: rgba(20,20,20,.7); color: #fff; border: 0; border-radius: 6px; font: bold 15px Arial, sans-serif; }
+.apres-ctl.vis button, .apres-ctl button:hover, .apres-ctl button:focus-visible { opacity: 1; }
+#apres-ant, #apres-prox { top: 50%; transform: translateY(-50%); width: 46px; height: 84px; font-size: 36px; line-height: 1; }
+#apres-ant { left: 10px; } #apres-prox { right: 10px; }
+#apres-sair { top: 12px; right: 12px; padding: 9px 14px; }
 /* botão Copiar link */
 .busca .link-btn { width: auto; font-size: 13px; padding: 0 12px; white-space: nowrap; }
 .busca .link-btn.ok { color: #fff; background: var(--verde); border-color: var(--verde); }
