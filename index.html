@@ -6,7 +6,7 @@
 <title>Atlas SRE Municípios – GOINFRA</title>
 <meta name="description" content="Sistema Rodoviário Estadual – SRE, atualizado mensalmente: situação da malha, indicadores, obras e projetos e composição da malha de cada município de Goiás.">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css?v=24">
+<link rel="stylesheet" href="style.css?v=25">
 <script>try { if (/tema=escuro/.test(location.search) || localStorage.getItem("atlas-tema") === "escuro") document.documentElement.dataset.tema = "escuro"; } catch (e) { if (/tema=escuro/.test(location.search)) document.documentElement.dataset.tema = "escuro"; }
 // página inicial (16/11/2026): aparece ao abrir o link principal; link de município (#código) ou ?capa=0 vai direto ao atlas;
 // F5 mantém o que estava na tela (capa aberta ou fechada) — a aba guarda o estado em sessionStorage
@@ -264,12 +264,17 @@
   <button id="apres-ant" type="button" title="Município anterior (←)" aria-label="Município anterior">‹</button>
   <button id="apres-prox" type="button" title="Próximo município (→)" aria-label="Próximo município">›</button>
   <button id="apres-sair" type="button" title="Sair da apresentação (Esc)">✕ Sair</button>
+  <div class="apres-zoom">
+    <button id="apres-zmenos" type="button" title="Afastar (−  ou  Ctrl + roda do mouse)" aria-label="Afastar">−</button>
+    <button id="apres-zajusta" type="button" title="Ajustar à tela (0)"><span id="apres-zval">100%</span> · Ajustar</button>
+    <button id="apres-zmais" type="button" title="Aproximar (+  ou  Ctrl + roda do mouse); com zoom, arraste para mover" aria-label="Aproximar">+</button>
+  </div>
 </div>
 
 <div id="dica" class="dica" role="tooltip"></div>
 <div id="carregando" class="carregando">Carregando o atlas…</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="app.js?v=22"></script>
+<script src="app.js?v=23"></script>
 </body>
 </html>
