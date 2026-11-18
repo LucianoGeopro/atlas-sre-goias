@@ -19,7 +19,8 @@ const PJ_CLASSES = [["Duplicação", "Licitação"], ["Duplicação", "Planejame
   ["PRAD", "Planejamento"], ["Restauração", "Planejamento"], ["Restauração", "Projeto"], ["Sinalização", "Planejamento"]];
 const PJ_PONT = { "Ponte em projeto": ["img/placaoaeprojeto.svg", "#00ffff", "#111"], "Em planejamento": ["img/placaplanejamento.svg", "#c8ab37", "#fff"],
   "Projeto": ["img/placaprojeto.svg", "#007eff", "#fff"], "Obra": ["img/placaobra.svg", "#ff6600", "#fff"] };
-const PLURAL = { "Ponte": "pontes", "Viaduto": "viadutos", "Bueiro": "bueiros", "Duplicação": "duplicações", "PRAD": "PRADs" };
+const PLURAL = { "Ponte": "pontes", "Viaduto": "viadutos", "Bueiro": "bueiros", "Duplicação": "duplicações", "PRAD": "PRADs", "OAE": "OAEs" };
+const SINGULAR = { "OAE": "OAE" };                 // 18/11/2026: sigla da DPJ (ponte/viaduto), sem minúscula
 const km2 = v => br(v, 2) + " Km";                 // Km sempre com 2 casas (layout 04)
 const T_MU = "#7b3fa0", T_LT = "#138a72", T_GO = "#2f6db5";
 
@@ -1081,7 +1082,7 @@ function grafUrbano(m) {
 function grafTipoObra(m) {
   const t = tipoDeObras(m.obras), O = t.Obra, P = t.Projeto;   // a partir do quadro: vale para 1 ou vários municípios
   const txtP = (titulo, pon) => titulo + ": " + Object.entries(pon).sort((a, b) => b[1] - a[1])
-    .map(([k, n]) => `${n} ${n > 1 ? (PLURAL[k] || k.toLowerCase() + "s") : k.toLowerCase()}`).join(" · ");
+    .map(([k, n]) => `${n} ${n > 1 ? (PLURAL[k] || k.toLowerCase() + "s") : (SINGULAR[k] || k.toLowerCase())}`).join(" · ");
   let h = cab("Tipo de Obra", "obras e projetos: quantidade e Km no município");
   const barras = [
     ...Object.entries(O.lineares).sort((a, b) => b[1].km - a[1].km).map(([k, v]) => ({ rot: "Obra – " + k, n: v.n, km: v.km, cor: DOR_COR[k] || "#0055d6", nat: "obra" })),
