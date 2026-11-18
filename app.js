@@ -111,9 +111,11 @@ function htmlObra(p, projeto) {
 // elemento do mapa mais perto do clique (em px), por prioridade: o polígono do município é desenhado por cima das
 // rodovias no mesmo canvas e "ganharia" o clique; aqui a rodovia/obra/projeto/localidade vem antes do município
 function elementoEm(e) {
+  return maisPerto(e, [[camadas.loc, htmlLoc, 9], [camadas.projP, f => htmlObra(f, true), 13], [camadas.dorP, f => htmlObra(f, false), 11],
+    [camadas.dorL, f => htmlObra(f, false), 8], [camadas.projL, f => htmlObra(f, true), 8], [camadas.sre, htmlSRE, 7], [camadas.snv, htmlSNV, 7]]);
+}
+function maisPerto(e, grupos) {
   const p = e.layerPoint;
-  const grupos = [[camadas.loc, htmlLoc, 9], [camadas.projP, f => htmlObra(f, true), 13], [camadas.dorP, f => htmlObra(f, false), 11],
-    [camadas.dorL, f => htmlObra(f, false), 8], [camadas.projL, f => htmlObra(f, true), 8], [camadas.sre, htmlSRE, 7], [camadas.snv, htmlSNV, 7]];
   for (const [g, fn, tol] of grupos) {
     if (!g || !mapa.hasLayer(g)) continue;
     let ach = null, melhor = tol;
@@ -136,6 +138,66 @@ function htmlMun(c) {
   return `<div class="bt">${esc(m.nome)}/GO</div>` + tabB([
     linB("Na seleção", SEL.includes(c) ? "Sim" : "Não"), linB("Extensão SRE", km2(tot)),
     ...ORD.filter(k => s[k]).map(k => linB(SIT[k][0], km2(s[k]) + ` (${br(s[k] / tot * 100, 1)}%)`))]);
+}
+
+/* ---------------- popup do elemento ao clicar no mapa (18/11/2026) ---------------- */
+// fora da apresentação: clique em trecho do SRE, obra ou projeto abre o popup; em área vazia troca o município
+const ppL = (k, v) => (v === undefined || v === null || v === "") ? "" : `<div class="pp-l"><b>${k}:</b> ${v}</div>`;
+const simNao = v => ({ s: "Sim", n: "Não" })[String(v ?? "").toLowerCase()] || esc(v);
+const temV = v => v !== undefined && v !== null && v !== "";
+function popSRE(p) {
+  const ts = (M?.trechos || []).filter(t => t.sre === p.sre), t0 = ts[0] || {}, g = k => temV(p[k]) ? p[k] : t0[k];
+  const mun = ts.filter(t => temV(t.ext_mun)).map(t => ppL("No município" + (t._mun ? " (" + esc(t._mun) + ")" : ""),
+    km2(+t.ext_mun) + (temV(t.pct_mun) ? ` (${num(t.pct_mun, 1)}%)` : "")));
+  return { cab: "Malha estadual · SRE", tit: `GO-${esc(p.go)}`, sub: `SRE ${esc(p.sre)}`, q: ts.length ? "sre" : null, cod: p.sre, lin: [
+    ppL("Trecho", temV(g("inicio")) || temV(g("fim")) ? `${esc(g("inicio"))} – ${esc(g("fim"))}` : ""),
+    ppL("Situação", `${esc(p.sit)} – ${SIT[p.sit]?.[0] || ""}`),
+    ppL("Km", temV(g("km_ini")) ? `${num(g("km_ini"), 2)} a ${num(g("km_fim"), 2)}` : ""),
+    ppL("Extensão", kmB(g("ext"))), ...mun,
+    ppL("Classe", esc(g("classe"))), ppL("Perímetro urbano", temV(g("perim_urb")) ? simNao(g("perim_urb")) : ""),
+    ppL("Faixa de domínio", +p.faixa ? br(+p.faixa, 0) + " m" : ""), ppL("Decreto da faixa", esc(p.decreto)),
+    ppL("Região de manutenção", esc(p.lote)), ppL("Jurisdição", esc(p.jur || g("jurisdicao")))] };
+}
+// obra ou projeto: dados do quadro "Obras e projetos" (se estiver na seleção) + os do mapa; projeto sempre "Projeto"
+function popObra(p, projeto, pontual) {
+  const os = (M?.obras || []).filter(o => o.codigo === p.codigo), o = os[0] || {};
+  return { cab: projeto ? "Projeto" : "Obra", tit: esc(p.intervencao || o.intervencao), sub: esc(p.codigo), q: os.length ? "obras" : null,
+    cod: p.codigo, lin: [
+    ppL("Natureza", projeto ? "<b>Projeto</b>" : "Obra"), ppL("Rodovia", esc(p.rodovia || o.rodovia)),
+    ppL("Tipo", esc(o.tipo || (pontual ? "Pontual" : "Trecho"))), ppL("Categoria", esc(p.cat)),
+    ppL("Etapa", esc(o.etapa || p.etapa)), ppL("Situação", esc(o.situacao)),
+    ...os.filter(x => temV(x.km_mun)).map(x => ppL("Km no município" + (x._mun ? " (" + esc(x._mun) + ")" : ""), kmB(x.km_mun))),
+    ppL("Km contratado", kmB(o.km_contrato))] };
+}
+function popupEm(e) {
+  return maisPerto(e, [[camadas.projP, f => popObra(f, true, true), 13], [camadas.dorP, f => popObra(f, false, true), 11],
+    [camadas.dorL, f => popObra(f, false, false), 8], [camadas.projL, f => popObra(f, true, false), 8], [camadas.sre, popSRE, 7]]);
+}
+function abrePop(ll, d) {
+  const h = `<div class="pp-cab">${d.cab}</div><div class="pp-tit">${d.tit}</div>${d.sub ? `<div class="pp-sub">${d.sub}</div>` : ""}` +
+    `<div class="pp-ls">${d.lin.join("")}</div>` + (d.q ? `<button type="button" class="pp-bt"><span aria-hidden="true">▦</span> Ver no quadro: ${
+      d.q === "sre" ? "Malha Estadual (SRE)" : "Obras e projetos"}</button>` : "");
+  // os controles do mapa ficam acima dos popups no Leaflet: o mapa desloca para o popup abrir fora da faixa deles
+  const c = mapa.getContainer(), cr = c.getBoundingClientRect(), fx = (sel, f) => Math.max(10, ...[...c.querySelectorAll(sel)]
+    .map(e => e.getBoundingClientRect()).filter(r => r.width).map(f).map(v => v + 8));
+  let pl = fx(".leaflet-top.leaflet-left .leaflet-control", r => r.right - cr.left), pr = fx(".leaflet-top.leaflet-right .leaflet-control", r => cr.right - r.left);
+  let pb = fx(".leaflet-bottom .leaflet-control", r => cr.bottom - r.top);
+  if (cr.width - pl - pr < 280) pl = pr = 10;
+  if (cr.height - pb < 260) pb = 10;
+  const pop = L.popup({ className: "pp", maxWidth: 360, minWidth: 250, autoPanPaddingTopLeft: [pl, 10], autoPanPaddingBottomRight: [pr, pb] })
+    .setLatLng(ll).setContent(h).openOn(mapa);
+  const b = pop.getElement()?.querySelector(".pp-bt"); if (b) b.onclick = () => verNoQuadro(d.q, d.cod);
+}
+// rola até o quadro e destaca a(s) linha(s) do código (abre o painel/seção recolhidos do site em painéis)
+function verNoQuadro(q, cod) {
+  const tb = $(q === "sre" ? "#t-sre" : "#t-obras"); if (!tb) return;
+  if (q === "sre" && tSRE && $("#filtro").value) { $("#filtro").value = ""; tSRE.filtra(""); }
+  if (document.documentElement.classList.contains("dir-fechado") && $("#rec-dir")) $("#rec-dir").click();
+  const sp = tb.closest(".sp.fechada"); if (sp) sp.querySelector(".sp-tit").click();
+  const trs = [...tb.querySelectorAll("tbody tr[data-i]")].filter(tr => [...tr.cells].some(td => td.textContent.trim() === cod));
+  tb.querySelectorAll("tr.sel").forEach(x => x.classList.remove("sel"));
+  trs.forEach(tr => { tr.classList.add("sel"); tr.classList.remove("pisca"); void tr.offsetWidth; tr.classList.add("pisca"); });
+  if (trs[0]) setTimeout(() => trs[0].scrollIntoView({ behavior: "smooth", block: "center" }), 280);
 }
 
 /* ---------------- tema claro / escuro ---------------- */
@@ -569,8 +631,11 @@ function iniciaMapa() {
     const f = municipioEm(e.latlng);
     // apresentação: o clique mostra o balão do elemento (ou do município); não mexe na seleção (trocar = setas ← →)
     if (APRES && !IMG) { const h = elementoEm(e) || (f && htmlMun(f.properties.cod)); if (h) abreBalao(e.originalEvent, h); return; }
+    const oe = e.originalEvent || {};
+    // 18/11/2026: em cima de trecho do SRE, obra ou projeto abre o popup (Ctrl/Shift + clique continua somando município)
+    if (!APRES && !(oe.ctrlKey || oe.shiftKey || oe.metaKey)) { const d = popupEm(e); if (d) { abrePop(e.latlng, d); return; } }
     if (!f) return;
-    const c = f.properties.cod, oe = e.originalEvent || {};
+    const c = f.properties.cod;
     if (COMB || oe.ctrlKey || oe.shiftKey || oe.metaKey) alterna(c);
     else if (c !== atual || SEL.length > 1) seleciona(c);
   });
