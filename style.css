@@ -519,3 +519,30 @@ html.arrastando, html.arrastando * { cursor: grabbing !important; }
 .busca .sel-btn { color: var(--brand); background: transparent; border: 1px solid var(--grade); border-radius: 4px; line-height: 1.2; }
 [data-tema=escuro] .busca .comb-btn { background: var(--sup2); }
 [data-tema=escuro] .busca .comb-btn.ativo { background: var(--brand); color: #111; }
+
+/* ---------------- popup do elemento do mapa (18/11/2026) ---------------- */
+.pp .leaflet-popup-content-wrapper { border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.28); background: #fff; color: #222; }
+.pp .leaflet-popup-tip { background: #fff; }
+.pp .leaflet-popup-content { margin: 14px 18px 14px 16px; font-size: 13px; line-height: 1.5; }
+.pp a.leaflet-popup-close-button { top: 8px; right: 8px; font-size: 20px; color: #888; }
+.pp a.leaflet-popup-close-button:hover { color: #222; }
+.pp-cab { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #6f6f6a; padding-right: 22px; }
+.pp-tit { font-size: 16px; font-weight: 700; color: #111; margin-top: 3px; line-height: 1.25; }
+.pp-sub { color: #555; }
+.pp-ls { margin-top: 8px; }
+.pp-l b { font-weight: 700; color: #222; }
+.pp-bt { display: block; width: 100%; margin-top: 10px; padding: 6px 10px; border: 1px solid #cfcfc8; border-radius: 6px; background: #fff;
+  color: #222; font-family: inherit; font-weight: 600; font-size: 12.5px; line-height: 1.3; text-align: left; cursor: pointer; }
+.pp-bt:hover { background: #f0f4f2; border-color: #9fb3a8; }
+.pp-bt span { margin-right: 4px; }
+[data-tema=escuro] .pp .leaflet-popup-content-wrapper, [data-tema=escuro] .pp .leaflet-popup-tip { background: #24282a; color: #e4e4df; }
+[data-tema=escuro] .pp-cab { color: #9a9993; }
+[data-tema=escuro] .pp-tit, [data-tema=escuro] .pp-l b { color: #f2f2ee; }
+[data-tema=escuro] .pp-sub { color: #b7b6b0; }
+[data-tema=escuro] .pp a.leaflet-popup-close-button { color: #9a9993; }
+[data-tema=escuro] .pp a.leaflet-popup-close-button:hover { color: #fff; }
+[data-tema=escuro] .pp-bt { background: #1c1f21; color: #e4e4df; border-color: #44484b; }
+[data-tema=escuro] .pp-bt:hover { background: #2c3134; }
+/* linha do quadro apontada pelo popup */
+@keyframes pisca-linha { 0%, 60% { outline: 2px solid #00923f; } 100% { outline: 2px solid transparent; } }
+.tab tbody tr.pisca { animation: pisca-linha 2.4s ease-out; outline-offset: -2px; }
