@@ -93,6 +93,17 @@ body { overflow-x: hidden; }
                            text-shadow: 0 0 2px #000, 0 0 3px #000; padding: 0; }
 .leaflet-tooltip.rot-loc::before { display: none; }
 .escala-num { background: #fff; padding: 2px 6px; font-size: 11px; font-weight: bold; border: 1px solid #999; }
+/* barra de escala como a do caderno (18/11/2026): caixa dupla, segmentos alternados, rótulos em cima */
+.escala-barra { background: rgba(255,255,255,.88); border: 1px solid #999; padding: 3px 26px 5px 8px; color: #222; box-sizing: content-box; }
+.escala-barra:empty { display: none; }
+.eb-rot { position: relative; height: 14px; font: 10px Arial, sans-serif; }
+.eb-rot span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.eb-rot span:first-child { transform: none; }
+.eb-rot span:last-child { transform: translateX(-4px); }
+.eb-cx { position: relative; height: 6px; border: 1px solid #222; box-sizing: border-box; }
+.eb-cx i { position: absolute; top: 0; bottom: 0; }
+.eb-cx i.p { background: linear-gradient(#222 50%, #fff 50%); }
+.eb-cx i.b { background: linear-gradient(#fff 50%, #222 50%); }
 .btn-mapa { background: #fff; border: 1px solid #999; border-radius: 3px; padding: 4px 8px; font-size: 12px; cursor: pointer; }
 /* copiar coordenadas (16/11/2026) — mesmas cores nos dois temas (fica sobre o mapa) */
 .btn-mapa.btn-coord.ativo { background: #1f5fa8; border-color: #1f5fa8; color: #fff !important; }
