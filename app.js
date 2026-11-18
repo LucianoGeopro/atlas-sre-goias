@@ -593,15 +593,39 @@ function iniciaMapa() {
       return d; } });
   new Norte().addTo(mapa);
   painelCamadas();
-  L.control.scale({ metric: true, imperial: false }).addTo(mapa);
+  // barra de escala (18/11/2026): como a do caderno — caixa dupla com 3 a 5 segmentos, "Km" com K maiúsculo.
+  // Metros por pixel medidos no centro do mapa (distância no elipsoide), não pela fórmula do zoom.
+  // Na apresentação a folha é uma A3 com 1680 px (0,25 mm/px): a escala numérica e o tamanho da barra (18–32 mm,
+  // como no caderno) são os da folha; fora dela, a escala vale para tela de 96 dpi.
+  const Barra = L.Control.extend({ options: { position: "bottomleft" },
+    onAdd() { this._d = L.DomUtil.create("div", "escala-barra"); return this._d; } });
+  const eb = new Barra().addTo(mapa);
   const EscNum = L.Control.extend({ options: { position: "topleft" },
     onAdd() { this._d = L.DomUtil.create("div", "escala-num"); return this._d; } });
   const en = new EscNum().addTo(mapa);
   const atualizaEsc = () => {
-    const c = mapa.getCenter(), mpp = 156543.03392 * Math.cos(c.lat * Math.PI / 180) / Math.pow(2, mapa.getZoom());
-    en._d.textContent = "ESCALA 1:" + br(Math.round(mpp * 96 / 0.0254 / 1000) * 1000, 0);
+    const t = mapa.getSize(); if (!t.x) return;
+    const y = t.y / 2, x0 = Math.max(0, t.x / 2 - 50);
+    const mpp = mapa.distance(mapa.containerPointToLatLng([x0, y]), mapa.containerPointToLatLng([x0 + 100, y])) / 100;
+    const folha = APRES && !IMG, mmPx = folha ? 420 / FOLHA_W : 25.4 / 96;
+    en._d.textContent = "ESCALA 1:" + br(Math.round(mpp * 1000 / mmPx / 1000) * 1000, 0);
+    const maxPx = (folha ? 32 : 40) / mmPx;
+    let melhor = null;
+    for (const seg of [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500])
+      for (const n of [5, 4, 3]) {
+        const px = seg * 1000 * n / mpp;
+        if (px <= maxPx && (!melhor || px > melhor.px)) melhor = { seg, n, px };
+      }
+    if (!melhor) { eb._d.innerHTML = ""; return; }
+    const w = melhor.px / melhor.n, num = v => br(v, Number.isInteger(v) ? 0 : (Number.isInteger(v * 10) ? 1 : 2));
+    let rot = "", cx = "";
+    for (let i = 0; i <= melhor.n; i++)
+      rot += `<span style="left:${i * w}px">${num(i * melhor.seg)}${i === melhor.n ? " Km" : ""}</span>`;
+    for (let i = 0; i < melhor.n; i++) cx += `<i class="${i % 2 ? "b" : "p"}" style="left:${i * w}px;width:${w}px"></i>`;
+    eb._d.innerHTML = `<div class="eb-rot">${rot}</div><div class="eb-cx" style="width:${melhor.px}px">${cx}</div>`;
+    eb._d.style.width = (melhor.px + 34) + "px";
   };
-  mapa.on("zoomend moveend", atualizaEsc);
+  mapa.on("zoomend moveend resize", atualizaEsc);
   const Volta = L.Control.extend({ options: { position: "topleft" },
     onAdd() { const b = L.DomUtil.create("button", "btn-mapa"); b.textContent = "⤢ Município"; b.title = "Voltar ao município";
       L.DomEvent.on(b, "click", e => { L.DomEvent.stop(e); enquadra(); }); return b; } });
