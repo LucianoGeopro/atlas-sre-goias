@@ -447,6 +447,37 @@ document.addEventListener("mousemove", () => { if (APRES) mostraCtl(); });
 $("#apres-zmais").onclick = () => zoomFolha(1.25);
 $("#apres-zmenos").onclick = () => zoomFolha(0.8);
 $("#apres-zajusta").onclick = () => zoomFolha(0);
+// imprimir (19/11/2026): fecha o balão, volta o zoom a 100%, espera o mapa (ou a imagem do caderno) terminar de carregar
+// e abre a janela de impressão do navegador (lá também dá "Salvar como PDF"); o style.css (@media print) deixa só a folha
+let IMPRIMINDO = false;
+// página A3 deitada sem margem só enquanto imprime no modo apresentação (fora dele, o Ctrl+P do site fica como era)
+function pagA3(liga) {
+  let st = document.getElementById("pag-a3");
+  if (liga && !st) { st = document.createElement("style"); st.id = "pag-a3"; st.textContent = "@page { size: A3 landscape; margin: 0; }"; document.head.appendChild(st); }
+  if (!liga && st) st.remove();
+}
+window.addEventListener("beforeprint", () => pagA3(APRES));
+window.addEventListener("afterprint", () => pagA3(false));
+async function imprimeFolha() {
+  if (!APRES || IMPRIMINDO) return;
+  IMPRIMINDO = true;
+  const b = $("#apres-impr"), txt = b.textContent;
+  fechaBalao(); $("#apres-img").classList.remove("zoom");
+  if (!IMG && ZF > 1.001) zoomFolha(0);
+  b.textContent = "⏳ Preparando…"; b.disabled = true;
+  const pronto = () => {
+    if (IMG) return $("#apres-img img").complete;
+    let carregando = false;
+    if (mapa) mapa.eachLayer(l => { if (l.isLoading && l.isLoading()) carregando = true; });
+    return !carregando;
+  };
+  for (let t = 0; t < 100 && !pronto(); t++) await new Promise(r => setTimeout(r, 150));    // espera até 15 s
+  await new Promise(r => setTimeout(r, 300));
+  b.textContent = txt; b.disabled = false;
+  pagA3(true);
+  try { window.print(); } finally { IMPRIMINDO = false; mostraCtl(); }
+}
+$("#apres-impr").onclick = imprimeFolha;
 // Ctrl + roda do mouse: zoom no ponto do cursor (também sobre o mapa); com zoom, a roda sozinha rola a folha
 window.addEventListener("wheel", e => {
   if (!APRES || IMG) return;
