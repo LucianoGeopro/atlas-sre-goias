@@ -8,17 +8,35 @@ const SIT = {                                   // cores dos gráficos (graficos
 };
 const ORD = Object.keys(SIT);
 const BRANCO = new Set(["PAV", "DUP", "EOD", "PLA"]);
-const DOR_COR = { "Duplicação": "#1a00f4", "Pavimentação": "#0055d6", "Restauração": "#00c8ec" };
-const DOR_PONT = "#4e88b9";
-// projetos (DPJ): padrão SIPLAWEB — cor pela intervenção; etapa Projeto = linha branca contínua no meio,
-// Planejamento/Licitação = linha branca tracejada (mesma simbologia do layout 04)
-const PJ_COR = { "Duplicação": "#001efe", "Melhoria Funcional": "#ff9601", "Pavimentação": "#dc0101", "PRAD": "#666666",
-  "Restauração": "#10a000", "Sinalização": "#666666" };
-const PJ_CLASSES = [["Duplicação", "Licitação"], ["Duplicação", "Planejamento"], ["Duplicação", "Projeto"],
-  ["Melhoria Funcional", "Projeto"], ["Pavimentação", "Licitação"], ["Pavimentação", "Planejamento"], ["Pavimentação", "Projeto"],
-  ["PRAD", "Planejamento"], ["Restauração", "Planejamento"], ["Restauração", "Projeto"], ["Sinalização", "Planejamento"]];
-const PJ_PONT = { "Ponte em projeto": ["img/placaoaeprojeto.svg", "#00ffff", "#111"], "Em planejamento": ["img/placaplanejamento.svg", "#c8ab37", "#fff"],
-  "Projeto": ["img/placaprojeto.svg", "#007eff", "#fff"], "Obra": ["img/placaobra.svg", "#ff6600", "#fff"] };
+// 19/11/2026: padrão OFICIAL das legendas da DOR e da DPJ (SIPLAWEB) — cores medidas nas legendas oficiais.
+// Mesma cor por intervenção nas obras e nos projetos; a etapa muda o traço (ver tracoLinha):
+//   Obra = faixa cheia · Licitação / Estudo Técnico Preliminar = faixa com tracejado branco · Projeto = linha dupla
+const INT_COR = { "Duplicação": "#3303f7", "Melhoria Funcional": "#fc9a2e", "Pavimentação": "#da2216", "PRAD": "#666666",
+  "Restauração": "#009f25", "Sinalização": "#666666" };
+const DOR_COR = INT_COR, PJ_COR = INT_COR;
+// legenda fixa = classes da legenda oficial, nesta ordem (sempre todas)
+const DOR_CLASSES = [["Duplicação", "Licitação"], ["Duplicação", "Obra"], ["Pavimentação", "Licitação"], ["Pavimentação", "Obra"],
+  ["Restauração", "Obra"]];
+const PJ_CLASSES = [["Duplicação", "Estudo Técnico Preliminar"], ["Duplicação", "Licitação"], ["Duplicação", "Projeto"],
+  ["Melhoria Funcional", "Projeto"], ["Pavimentação", "Estudo Técnico Preliminar"], ["Pavimentação", "Licitação"],
+  ["Pavimentação", "Obra"], ["Pavimentação", "Projeto"], ["PRAD", "Estudo Técnico Preliminar"],
+  ["Restauração", "Estudo Técnico Preliminar"], ["Restauração", "Projeto"], ["Sinalização", "Estudo Técnico Preliminar"]];
+// placas: [ícone, cor da tarja no quadro, cor do texto da tarja]
+const PLACA = { "OAE em planejamento": ["img/placaoaeplanejamento.svg", "#b5b5b5", "#111"],
+  "OAE em projeto": ["img/placaoaeprojeto.svg", "#37f8f9", "#111"], "OAE em obra": ["img/placaoaeobra.svg", "#f7fc55", "#111"],
+  "OAC em obra": ["img/placaoacobra.svg", "#f7fc55", "#111"], "Em planejamento": ["img/placaplanejamento.svg", "#c6ad47", "#fff"] };
+const DOR_PLACAS = ["OAE em obra", "OAC em obra"];
+const PJ_PLACAS = ["OAE em planejamento", "OAE em projeto", "OAE em obra", "Em planejamento"];
+const OAE = new Set(["Ponte", "Viaduto", "OAE"]);
+// categoria da placa (o dado já traz "cat"; o cálculo aqui cobre dado antigo)
+function catPlaca(p, projeto) {
+  if (PLACA[p.cat]) return p.cat;
+  if (!projeto) return p.intervencao === "Bueiro" ? "OAC em obra" : "OAE em obra";
+  if (!OAE.has(p.intervencao)) return "Em planejamento";
+  return /Planejamento|Estudo/.test(p.etapa || "") ? "OAE em planejamento" : p.etapa === "Projeto" ? "OAE em projeto" : "OAE em obra";
+}
+const etapaTraco = et => et === "Projeto" ? "projeto" : (!et || et === "Obra") ? "obra" : "escada";
+const DOR_PONT = PLACA["OAE em obra"][1];
 const PLURAL = { "Ponte": "pontes", "Viaduto": "viadutos", "Bueiro": "bueiros", "Duplicação": "duplicações", "PRAD": "PRADs", "OAE": "OAEs" };
 const SINGULAR = { "OAE": "OAE" };                 // 18/11/2026: sigla da DPJ (ponte/viaduto), sem minúscula
 const km2 = v => br(v, 2) + " Km";                 // Km sempre com 2 casas (layout 04)
@@ -485,6 +503,32 @@ async function imprimeFolha() {
   try { window.print(); } finally { IMPRIMINDO = false; mostraCtl(); }
 }
 $("#apres-impr").onclick = imprimeFolha;
+// aviso de novidades (19/11/2026): ATUALIZAR A CADA PUBLICAÇÃO — id novo faz o aviso aparecer de novo para todos.
+// Aparece uma vez por atualização (lembrado no navegador), fecha no ✕/Entendi; o botão 🔔 Novidades reabre; nunca no modo apresentação.
+const NOVIDADES = { id: "2026-11-19c", data: "19/11/2026", itens: [
+  "Legendas e símbolos de obras e projetos no padrão oficial: cor pelo tipo de intervenção e traço pela etapa (Estudo Técnico Preliminar, Licitação, Projeto, Obra), com as placas de OAE e OAC.",
+  "Novo botão <b>🖨 Imprimir</b> no modo apresentação: imprime ou salva em PDF a folha do município, ou dos municípios combinados, em A3 deitada.",
+  "Zoom (<b>−</b> / <b>Ajustar</b> / <b>+</b>) também na página de um município no modo apresentação; com zoom, arraste para mover.",
+  "No modo apresentação, os botões ficam escondidos e aparecem ao mexer o mouse.",
+  "Impressora A4: na janela de impressão, escolha “Ajustar à página”.",
+] };
+const CHAVE_NOVID = "novid:" + (location.pathname.split("/")[1] || "local");    // atlas e painel guardam separado
+function mostraNovidades(forcar) {
+  if (APRES) return;
+  if (!forcar) { try { if (localStorage.getItem(CHAVE_NOVID) === NOVIDADES.id) return; } catch (e) {} }
+  const c = $("#novid");
+  c.querySelector(".novid-data").textContent = "· " + NOVIDADES.data;
+  c.querySelector(".novid-lista").innerHTML = NOVIDADES.itens.map(t => `<li>${t}</li>`).join("");
+  c.hidden = false;
+}
+function fechaNovidades() {
+  $("#novid").hidden = true;
+  try { localStorage.setItem(CHAVE_NOVID, NOVIDADES.id); } catch (e) {}
+}
+$("#novid .novid-x").onclick = fechaNovidades;
+$("#novid .novid-ok").onclick = fechaNovidades;
+$("#novid-btn").onclick = () => $("#novid").hidden ? mostraNovidades(true) : fechaNovidades();
+setTimeout(() => mostraNovidades(false), 800);
 // Ctrl + roda do mouse: zoom no ponto do cursor (também sobre o mapa); com zoom, a roda sozinha rola a folha
 window.addEventListener("wheel", e => {
   if (!APRES) return;
@@ -628,31 +672,30 @@ function iniciaMapa() {
   camadas.sre = L.geoJSON(null, { renderer: rnd, pane: "vias", style: estiloSRE,
     onEachFeature: (f, l) => { l.bindTooltip(`<b>GO-${esc(f.properties.go)}</b> · ${esc(f.properties.sre)}<br>${SIT[f.properties.sit]?.[0] || esc(f.properties.sit)}`, { sticky: true });
       balaoMapa(l, () => htmlSRE(f.properties)); } });
-  // obras (DOR): contorno branco + cor por tipo (mesma simbologia do layout)
-  const dorCasco = L.geoJSON(null, { renderer: rnd, pane: "obras", style: { color: "#ffffff", weight: 8, opacity: 0.9 }, interactive: false });
-  const dorCor = L.geoJSON(null, { renderer: rnd, pane: "obras",
-      style: f => ({ color: DOR_COR[f.properties.intervencao] || "#0055d6", weight: 5 }),
-      onEachFeature: (f, l) => { l.bindTooltip(`<b>Obra – ${esc(f.properties.intervencao)}</b><br>${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`, { sticky: true });
-        balaoMapa(l, () => htmlObra(f.properties, false)); } });
+  // obras (DOR) e projetos (DPJ), padrão oficial (19/11/2026): faixa na cor da intervenção + traço branco por cima
+  // conforme a etapa — Obra = cheia; Licitação/ETP = tracejado branco no meio; Projeto = linha branca contínua (linha dupla)
+  const base = f => ({ color: INT_COR[f.properties.intervencao] || "#666666", weight: etapaTraco(f.properties.etapa) === "obra" ? 6 : 8,
+    opacity: 1, lineCap: "butt" });
+  const topo = f => { const t = etapaTraco(f.properties.etapa);
+    return t === "obra" ? { opacity: 0, weight: 0 } : { color: "#ffffff", opacity: 1, lineCap: "butt",
+      weight: t === "projeto" ? 3 : 4.5, dashArray: t === "projeto" ? null : "6 3" }; };
+  const dica = (nat, p) => `<b>${nat} – ${esc(p.intervencao)} - ${esc(p.etapa || "Obra")}</b><br>${esc(p.rodovia || "")} · ${esc(p.codigo || "")}`;
+  const dorCasco = L.geoJSON(null, { renderer: rnd, pane: "obras", style: base,
+      onEachFeature: (f, l) => { l.bindTooltip(dica("Obra", f.properties), { sticky: true }); balaoMapa(l, () => htmlObra(f.properties, false)); } });
+  const dorCor = L.geoJSON(null, { renderer: rnd, pane: "obras", interactive: false, style: topo });
   camadas.dorL = L.layerGroup([dorCasco, dorCor]);
-  // pontos no mesmo canvas das linhas (um canvas próprio por cima bloqueava o clique nos municípios)
-  camadas.dorP = L.geoJSON(null, {
-    pointToLayer: (f, ll) => L.circleMarker(ll, { renderer: rnd, radius: 7, color: "#ffffff", weight: 2, fillColor: DOR_PONT, fillOpacity: 1 }),
-    onEachFeature: (f, l) => { l.bindTooltip(`<b>Obra pontual – ${esc(f.properties.intervencao)}</b><br>${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`);
+  const placa = (f, projeto) => L.icon({ iconUrl: PLACA[catPlaca(f.properties, projeto)][0], iconSize: [22, 22], iconAnchor: [11, 11] });
+  camadas.dorP = L.geoJSON(null, { pane: "projP",
+    pointToLayer: (f, ll) => L.marker(ll, { pane: "projP", icon: placa(f, false) }),
+    onEachFeature: (f, l) => { l.bindTooltip(`<b>Obra pontual – ${esc(catPlaca(f.properties, false))}</b><br>${esc(f.properties.intervencao)} · ${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`);
       balaoMapa(l, () => htmlObra(f.properties, false)); } });
-  // projetos (DPJ): faixa colorida + linha branca no meio (contínua = Projeto; tracejada = Planejamento/Licitação)
-  const dicaPJ = p => `<b>Projeto – ${esc(p.intervencao)} - ${esc(p.etapa)}</b><br>${esc(p.rodovia || "")} · ${esc(p.codigo || "")}`;
-  const pjBase = L.geoJSON(null, { renderer: rnd, pane: "projetos",
-      style: f => ({ color: PJ_COR[f.properties.intervencao] || "#666666", weight: 7, opacity: 0.95, lineCap: "round" }),
-      onEachFeature: (f, l) => { l.bindTooltip(dicaPJ(f.properties), { sticky: true }); balaoMapa(l, () => htmlObra(f.properties, true)); } });
-  const pjTopo = L.geoJSON(null, { renderer: rnd, pane: "projetos", interactive: false,
-      style: f => ({ color: "#ffffff", weight: 2.3, opacity: 1, dashArray: f.properties.etapa === "Projeto" ? null : "6 4.5",
-        lineCap: f.properties.etapa === "Projeto" ? "round" : "butt" }) });
+  const pjBase = L.geoJSON(null, { renderer: rnd, pane: "projetos", style: base,
+      onEachFeature: (f, l) => { l.bindTooltip(dica("Projeto", f.properties), { sticky: true }); balaoMapa(l, () => htmlObra(f.properties, true)); } });
+  const pjTopo = L.geoJSON(null, { renderer: rnd, pane: "projetos", interactive: false, style: topo });
   camadas.projL = L.layerGroup([pjBase, pjTopo]);
   camadas.projP = L.geoJSON(null, { pane: "projP",
-    pointToLayer: (f, ll) => L.marker(ll, { pane: "projP", icon: L.icon({ iconUrl: (PJ_PONT[f.properties.cat] || PJ_PONT.Projeto)[0],
-      iconSize: [22, 22], iconAnchor: [11, 11] }) }),
-    onEachFeature: (f, l) => { l.bindTooltip(`<b>Projeto pontual – ${esc(f.properties.cat)}</b><br>${esc(f.properties.intervencao)} · ${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`);
+    pointToLayer: (f, ll) => L.marker(ll, { pane: "projP", icon: placa(f, true) }),
+    onEachFeature: (f, l) => { l.bindTooltip(`<b>Projeto pontual – ${esc(catPlaca(f.properties, true))}</b><br>${esc(f.properties.intervencao)} · ${esc(f.properties.rodovia || "")} · ${esc(f.properties.codigo || "")}`);
       balaoMapa(l, () => htmlObra(f.properties, true)); } });
   camadas.loc = L.geoJSON(null, {
     pointToLayer: (f, ll) => L.circleMarker(ll, { renderer: rnd, radius: /Sede|Capital/.test(f.properties.t) ? 4 : 2.5, color: "#222",
@@ -1318,9 +1361,8 @@ function tabela(el, cols, linhas, vazio, aoClicar) {
 }
 // cor da tarja do "Mapa" = cor do símbolo no mapa (obra azul por tipo; projeto pela intervenção ou pela placa)
 function corTarja(l) {
-  if (l.natureza === "Obra") return [l.tipo === "Pontual" ? DOR_PONT : (DOR_COR[l.intervencao] || "#0055d6"), "#fff"];
-  if (l.tipo === "Pontual") { const p = PJ_PONT[l.cat] || PJ_PONT.Projeto; return [p[1], p[2]]; }
-  return [PJ_COR[l.intervencao] || "#666666", "#fff"];
+  if (l.tipo === "Pontual") { const p = PLACA[catPlaca(l, l.natureza !== "Obra")]; return [p[1], p[2]]; }
+  return [INT_COR[l.intervencao] || "#666666", "#fff"];
 }
 function tabelaObras(m, multi = false) {
   const ls = (m.obras || []).map(l => ({ ...l, _cor: corTarja(l) }));
@@ -1349,19 +1391,20 @@ function legenda() {
   const ln = (cor, w, dash, casing) => `<svg width="34" height="12">${casing ? `<line x1="2" x2="32" y1="6" y2="6" stroke="${casing}" stroke-width="${w + 3}"/>` : ""}
       <line x1="2" x2="32" y1="6" y2="6" stroke="${cor}" stroke-width="${w}" ${dash ? `stroke-dasharray="${dash}"` : ""}/></svg>`;
   const it = (sw, t) => `<div>${sw}<span>${t}</span></div>`;
+  // símbolos da legenda oficial (19/11/2026): mesmo desenho do mapa (faixa + traço branco conforme a etapa)
+  const traco = (iv, et) => { const t = etapaTraco(et), c = INT_COR[iv];
+    return `<svg width="34" height="12"><line x1="2" x2="32" y1="6" y2="6" stroke="${c}" stroke-width="${t === "obra" ? 6 : 8}"/>` +
+      (t === "obra" ? "" : `<line x1="2" x2="32" y1="6" y2="6" stroke="#fff" stroke-width="${t === "projeto" ? 3 : 4.5}"${t === "projeto" ? "" : ` stroke-dasharray="6 3"`}/>`) + `</svg>`; };
+  const placaLg = k => `<img src="${PLACA[k][0]}" width="20" height="20" alt="" style="margin:0 7px">`;
   $("#legenda").innerHTML =
     `<div class="lg-tit">SRE – ${cap(A.rotulo)}</div>` +
     it(ln("#e31a1c", 5), "Duplicada") + it(ln("#e31a1c", 3), "Pavimentada") + it(ln("#e31a1c", 3, "8 5"), "Em obras de pavimentação") +
     it(ln("#e88000", 3), "Implantada / Leito natural") +
     `<div class="lg-tit">SNV – Rodovias federais</div>` + it(ln("#33a02c", 3), "Federal") +
-    `<div class="lg-tit">Obras</div>` +
-    Object.entries(DOR_COR).map(([k, c]) => it(ln(c, 5, null, "#ffffff"), k)).join("") +
-    it(`<svg width="34" height="14"><circle cx="17" cy="7" r="5.5" fill="${DOR_PONT}" stroke="#fff" stroke-width="2"/></svg>`, "Obras pontuais (ponte, viaduto, bueiro)") +
-    `<div class="lg-tit">Projetos</div>` +
-    PJ_CLASSES.map(([iv, et]) => it(`<svg width="34" height="12"><line x1="3" x2="31" y1="6" y2="6" stroke="${PJ_COR[iv]}" stroke-width="7" stroke-linecap="round"/>
-      <line x1="3" x2="31" y1="6" y2="6" stroke="#fff" stroke-width="2.3" ${et === "Projeto" ? `stroke-linecap="round"` : `stroke-dasharray="5 3.5"`}/></svg>`, `${iv} - ${et}`)).join("") +
-    `<div class="lg-tit">Projetos pontuais</div>` +
-    Object.entries(PJ_PONT).map(([k, p]) => it(`<img src="${p[0]}" width="18" height="18" alt="" style="margin:0 8px">`, k)).join("") +
+    `<div class="lg-tit">Obras</div>` + DOR_CLASSES.map(([iv, et]) => it(traco(iv, et), `${iv} - ${et}`)).join("") +
+    DOR_PLACAS.map(k => it(placaLg(k), k)).join("") +
+    `<div class="lg-tit">Projetos</div>` + PJ_CLASSES.map(([iv, et]) => it(traco(iv, et), `${iv} - ${et}`)).join("") +
+    PJ_PLACAS.map(k => it(placaLg(k), k)).join("") +
     `<div class="lg-tit">Demais</div>` +
     it(`<svg width="34" height="14"><rect x="3" y="2" width="28" height="10" fill="none" stroke="#ffd400" stroke-width="3"/></svg>`, "Limite municipal") +
     it(`<svg width="34" height="14"><rect x="3" y="2" width="28" height="10" fill="#f2d24b" fill-opacity=".3" stroke="#f2d24b"/></svg>`, "Perímetro urbano") +
