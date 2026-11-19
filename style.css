@@ -425,21 +425,6 @@ html.arrastando, html.arrastando * { cursor: grabbing !important; }
 .busca #ver-capa { margin-left: auto; }
 .busca #ver-capa + .tema-btn { margin-left: 0; }
 .busca #novid-btn + .tema-btn { margin-left: 0; }
-/* aviso de novidades (19/11/2026): canto inferior direito, fora do mapa; some no modo apresentação e na impressão */
-.novid { position: fixed; right: 18px; bottom: 18px; z-index: 3100; width: min(380px, calc(100vw - 32px)); box-sizing: border-box;
-  background: #fff; color: var(--ink); border: 1px solid #d5dbd7; border-left: 5px solid var(--verde); border-radius: 6px;
-  box-shadow: 0 6px 24px rgba(0,0,0,.22); padding: 14px 16px 12px; font: 14px/1.45 Arial, sans-serif; }
-.novid[hidden] { display: none; }
-.novid-tit { font-weight: bold; font-size: 15px; color: var(--brand); padding-right: 24px; margin-bottom: 6px; }
-.novid-data { font-weight: normal; font-size: 13px; color: var(--muted); }
-.novid-lista { margin: 0 0 10px; padding-left: 18px; }
-.novid-lista li + li { margin-top: 5px; }
-.novid-x { position: absolute; top: 8px; right: 8px; border: 0; background: none; color: var(--ink2); font-size: 16px; cursor: pointer; padding: 2px 6px; }
-.novid-ok { font: bold 13px Arial, sans-serif; color: #fff; background: var(--verde); border: 0; border-radius: 4px; padding: 6px 14px; cursor: pointer; }
-[data-tema=escuro] .novid { background: var(--sup2); border-color: var(--borda); border-left-color: var(--brand); box-shadow: 0 6px 24px rgba(0,0,0,.6); }
-html.apres .novid, html.apres-img .novid { display: none !important; }
-@media print { .novid { display: none !important; } }
-@media (max-width: 600px) { .novid { right: 16px; bottom: 16px; } }
 .busca #ver-sobre + .tema-btn { margin-left: 0; }
 
 /* sobre os dados (16/11/2026): página de leitura por cima da capa e do atlas */
