@@ -330,19 +330,24 @@ function mostraCoord(ll, copiaJa) {
 let APRES = false, temaAntes = null, ctlTimer = null;
 // zoom da folha montada (vários municípios, 16/11/2026): ZF = zoom sobre o "caber na tela"; TX/TY = posição na tela
 let ZF = 1, TX = 0, TY = 0;
-const escBase = () => Math.min(window.innerWidth / FOLHA_W, window.innerHeight / FOLHA_H);
+// 19/11/2026: o mesmo zoom vale para a imagem da página de um município (IMG)
+const alvoZoom = () => IMG ? $("#apres-img img") : $("#folha");
+const dimZoom = () => { const im = $("#apres-img img");
+  return IMG && im.naturalWidth ? [im.naturalWidth, im.naturalHeight] : [FOLHA_W, FOLHA_H]; };
+const escBase = () => { const [w, h] = dimZoom(); return Math.min(window.innerWidth / w, window.innerHeight / h); };
 function escalaFolha() {
-  const s = escBase() * ZF, W = FOLHA_W * s, H = FOLHA_H * s, vw = window.innerWidth, vh = window.innerHeight;
+  const [fw, fh] = dimZoom();
+  const s = escBase() * ZF, W = fw * s, H = fh * s, vw = window.innerWidth, vh = window.innerHeight;
   // menor que a tela: centraliza; maior: não deixa sobrar borda vazia
   TX = W <= vw ? (vw - W) / 2 : Math.min(0, Math.max(vw - W, TX));
   TY = H <= vh ? (vh - H) / 2 : Math.min(0, Math.max(vh - H, TY));
-  $("#folha").style.transform = `translate(${TX}px, ${TY}px) scale(${s})`;
+  alvoZoom().style.transform = `translate(${TX}px, ${TY}px) scale(${s})`;
   document.documentElement.classList.toggle("folha-zoom", ZF > 1.001);
   const z = $("#apres-zval"); if (z) z.textContent = Math.round(ZF * 100) + "%";
 }
 // f > 1 aproxima, f < 1 afasta, f = 0 volta a caber na tela; (cx, cy) = ponto da tela que fica parado
 function zoomFolha(f, cx = window.innerWidth / 2, cy = window.innerHeight / 2) {
-  if (!APRES || IMG) return;
+  if (!APRES) return;
   const s = escBase() * ZF, nz = f === 0 ? 1 : Math.min(6, Math.max(1, ZF * f)), s2 = escBase() * nz;
   TX = cx - (cx - TX) * s2 / s; TY = cy - (cy - TY) * s2 / s; ZF = nz;
   fechaBalao(); escalaFolha(); mostraCtl();
@@ -393,7 +398,7 @@ function entraApres() {
   $("#apres-ctl").hidden = false; mostraCtl();
   if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
   modoApres();
-  setTimeout(() => { if (!IMG) { escalaFolha(); ajustaFolha(); } }, 300);      // depois de entrar na tela cheia
+  setTimeout(() => { escalaFolha(); if (!IMG) ajustaFolha(); }, 300);     // depois de entrar na tela cheia
 }
 // 16/11/2026: um município = imagem da página do caderno exportada do QGIS (layout 04, data/<mês>/caderno/<código>.jpg);
 // vários municípios = a folha montada no site (não há imagem de combinação)
@@ -410,24 +415,24 @@ function modoApres() {
   caixa.hidden = !IMG;
   if (IMG) {
     $("#folha").style.transform = "";
-    const im = $("#apres-img img"); caixa.classList.remove("zoom");
+    const im = $("#apres-img img");
     im.onerror = () => { SEM_IMG.add(cod); modoApres(); };
+    im.onload = () => { if (IMG) { ZF = 1; escalaFolha(); } };
     im.src = `data/${MES_SITE}/caderno/${cod}.jpg`;
     im.alt = `Página do caderno – ${A.municipios[cod].nome}/GO`;
-  } else { escalaFolha(); ajustaFolha(); }
+    escalaFolha();
+  } else { $("#apres-img img").style.transform = ""; escalaFolha(); ajustaFolha(); }
 }
-// clique na imagem: tamanho real (para ler as tabelas), no ponto clicado; outro clique volta a caber na tela
+// clique na imagem: tamanho real (para ler as tabelas), no ponto clicado; com zoom, o clique volta a caber na tela
 $("#apres-img").addEventListener("click", ev => {
-  const c = $("#apres-img"), im = c.querySelector("img"), r = im.getBoundingClientRect();
-  const fx = (ev.clientX - r.left) / r.width, fy = (ev.clientY - r.top) / r.height;
-  c.classList.toggle("zoom");
-  if (c.classList.contains("zoom")) { c.scrollLeft = fx * im.offsetWidth - c.clientWidth / 2; c.scrollTop = fy * im.offsetHeight - c.clientHeight / 2; }
+  if (!IMG) return;
+  if (ZF > 1.001) zoomFolha(0); else zoomFolha(Math.max(2, 1 / escBase()), ev.clientX, ev.clientY);
 });
 function saiApres() {
   if (!APRES) return;
   APRES = false; IMG = false; ZF = 1; fechaBalao();
   document.documentElement.classList.remove("apres", "apres-img", "folha-zoom");
-  $("#apres-img").hidden = true; $("#apres-img").classList.remove("zoom");
+  $("#apres-img").hidden = true; $("#apres-img img").style.transform = "";
   $("#apres-ctl").hidden = true;
   const f = $("#folha"); f.style.transform = "";
   f.querySelectorAll("[style*=zoom]").forEach(e => e.style.zoom = "");
@@ -441,9 +446,11 @@ $("#apres").onclick = entraApres;
 $("#apres-sair").onclick = saiApres;
 $("#apres-ant").onclick = () => $("#ant").click();
 $("#apres-prox").onclick = () => $("#prox").click();
-document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement) saiApres(); else if (!IMG) { escalaFolha(); ajustaFolha(); } });
-window.addEventListener("resize", () => { if (APRES && !IMG) { ZF = 1; escalaFolha(); ajustaFolha(); } });
+document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement) saiApres(); else { escalaFolha(); if (!IMG) ajustaFolha(); } });
+window.addEventListener("resize", () => { if (APRES) { ZF = 1; escalaFolha(); if (!IMG) ajustaFolha(); } });
 document.addEventListener("mousemove", () => { if (APRES) mostraCtl(); });
+// botão clicado não fica marcado (senão, ao usar o teclado depois, ele não some mais com o mouse parado)
+$("#apres-ctl").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setTimeout(() => b.blur(), 0); });
 $("#apres-zmais").onclick = () => zoomFolha(1.25);
 $("#apres-zmenos").onclick = () => zoomFolha(0.8);
 $("#apres-zajusta").onclick = () => zoomFolha(0);
@@ -462,8 +469,8 @@ async function imprimeFolha() {
   if (!APRES || IMPRIMINDO) return;
   IMPRIMINDO = true;
   const b = $("#apres-impr"), txt = b.textContent;
-  fechaBalao(); $("#apres-img").classList.remove("zoom");
-  if (!IMG && ZF > 1.001) zoomFolha(0);
+  fechaBalao();
+  if (ZF > 1.001) zoomFolha(0);
   b.textContent = "⏳ Preparando…"; b.disabled = true;
   const pronto = () => {
     if (IMG) return $("#apres-img img").complete;
@@ -480,7 +487,7 @@ async function imprimeFolha() {
 $("#apres-impr").onclick = imprimeFolha;
 // Ctrl + roda do mouse: zoom no ponto do cursor (também sobre o mapa); com zoom, a roda sozinha rola a folha
 window.addEventListener("wheel", e => {
-  if (!APRES || IMG) return;
+  if (!APRES) return;
   if (e.ctrlKey) { e.preventDefault(); e.stopPropagation(); zoomFolha(e.deltaY < 0 ? 1.2 : 1 / 1.2, e.clientX, e.clientY); return; }
   if (ZF > 1.001 && !e.target.closest?.(".mapa")) {
     e.preventDefault(); fechaBalao();
@@ -489,10 +496,13 @@ window.addEventListener("wheel", e => {
 }, { capture: true, passive: false });
 // com zoom, arrastar a folha (fora do mapa, que tem o próprio arraste) move a visão
 let ARR = null, ARRASTOU = false;
-$("#folha").addEventListener("pointerdown", e => {
-  if (!APRES || IMG || ZF <= 1.001 || e.button !== 0 || e.target.closest(".mapa")) return;
+const iniArraste = e => {
+  if (!APRES || ZF <= 1.001 || e.button !== 0 || e.target.closest(".mapa")) return;
+  if (IMG) e.preventDefault();                       // não arrastar a imagem como arquivo
   ARR = { x: e.clientX, y: e.clientY, tx: TX, ty: TY }; ARRASTOU = false;
-});
+};
+$("#folha").addEventListener("pointerdown", e => { if (!IMG) iniArraste(e); });
+$("#apres-img").addEventListener("pointerdown", e => { if (IMG) iniArraste(e); });
 window.addEventListener("pointermove", e => {
   if (!ARR) return;
   const dx = e.clientX - ARR.x, dy = e.clientY - ARR.y;
@@ -508,9 +518,9 @@ window.addEventListener("click", e => { if (ARRASTOU) { e.stopPropagation(); e.p
 document.addEventListener("keydown", e => {
   if (!APRES || e.target.closest?.("input, select, textarea")) return;
   if (e.key === "Escape" && !balao.hidden) fechaBalao();
-  else if (!IMG && (e.key === "+" || e.key === "=")) zoomFolha(1.25);
-  else if (!IMG && e.key === "-") zoomFolha(0.8);
-  else if (!IMG && e.key === "0") zoomFolha(0);
+  else if (e.key === "+" || e.key === "=") zoomFolha(1.25);
+  else if (e.key === "-") zoomFolha(0.8);
+  else if (e.key === "0") zoomFolha(0);
   else if (e.key === "Escape") saiApres();
   else if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); $("#prox").click(); }
   else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); $("#ant").click(); }
