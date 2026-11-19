@@ -368,12 +368,12 @@ html.apres .rodape { flex: none; max-width: none; width: 100%; margin: 0; positi
 html.apres .apres-pag { display: block; position: absolute; right: 40px; bottom: 9px; font-weight: bold; font-size: 12px; color: var(--ink); }
 /* um município: imagem da página do caderno (layout 04 exportado do QGIS) */
 html.apres-img, html.apres-img body { overflow: hidden; }
-.apres-img { position: fixed; inset: 0; z-index: 2850; background: #2b2d2f; display: flex; align-items: center; justify-content: center;
-  overflow: hidden; cursor: zoom-in; }
+.apres-img { position: fixed; inset: 0; z-index: 2850; background: #2b2d2f; overflow: hidden; cursor: zoom-in; }
 .apres-img[hidden] { display: none; }
-.apres-img img { display: block; max-width: 100%; max-height: 100%; box-shadow: 0 0 30px rgba(0,0,0,.55); background: #fff; }
-.apres-img.zoom { display: block; overflow: auto; cursor: zoom-out; }
-.apres-img.zoom img { max-width: none; max-height: none; }
+/* 19/11/2026: a imagem usa o mesmo zoom da folha montada (app.js põe translate + scale) */
+.apres-img img { display: block; position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none; max-height: none;
+  box-shadow: 0 0 30px rgba(0,0,0,.55); background: #fff; user-select: none; -webkit-user-drag: none; }
+html.apres-img.folha-zoom .apres-img { cursor: grab; }
 /* controles: aparecem ao mexer o mouse e somem depois de 2,5 s */
 .apres-ctl { position: fixed; inset: 0; z-index: 2900; pointer-events: none; }
 .apres-ctl[hidden] { display: none; }
@@ -383,11 +383,10 @@ html.apres-img, html.apres-img body { overflow: hidden; }
 #apres-ant, #apres-prox { top: 50%; transform: translateY(-50%); width: 46px; height: 84px; font-size: 36px; line-height: 1; }
 #apres-ant { left: 10px; } #apres-prox { right: 10px; }
 #apres-sair { top: 12px; right: 12px; padding: 9px 14px; }
-/* zoom da folha montada (16/11/2026): só com vários municípios; a página de um município já tem o próprio zoom */
+/* zoom (16/11/2026; desde 19/11 também na página de um município) e, ao lado, o Imprimir */
 .apres-zoom { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: none; }
 .apres-ctl .apres-zoom button { position: static; padding: 8px 14px; min-width: 44px; }
 #apres-zmenos, #apres-zmais { font-size: 22px; line-height: 1; padding: 4px 12px; }
-html.apres-img #apres-zmenos, html.apres-img #apres-zajusta, html.apres-img #apres-zmais { display: none; }   /* um município: fica só o Imprimir */
 #apres-impr { margin-left: 8px; }
 #apres-impr:disabled { cursor: progress; }
 /* impressão (19/11/2026): botão "🖨 Imprimir" (ou Ctrl+P) no modo apresentação = só a folha, A3 deitada, sem margens.
@@ -401,7 +400,8 @@ html.apres-img #apres-zmenos, html.apres-img #apres-zajusta, html.apres-img #apr
     zoom: .944; box-shadow: none !important; }
   html.apres .leaflet-control-zoom, html.apres .btn-mapa, html.apres .leitura-coord, html.apres .leaflet-popup { display: none !important; }
   html.apres-img .apres-img { position: static !important; display: block !important; background: #fff !important; overflow: visible !important; }
-  html.apres-img .apres-img img { width: 419mm !important; height: 296mm !important; max-width: none !important; max-height: none !important;
+  html.apres-img .apres-img img { position: static !important; transform: none !important;
+    width: 419mm !important; height: 296mm !important; max-width: none !important; max-height: none !important;
     object-fit: contain; box-shadow: none !important; }
 }
 html.apres.folha-zoom .folha { cursor: grab; user-select: none; }
