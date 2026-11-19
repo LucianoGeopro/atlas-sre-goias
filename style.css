@@ -283,6 +283,17 @@ html[data-tema=escuro], [data-tema=escuro] body { background: var(--fundo); colo
 /* 13/11/2026 – obras e projetos (layout 04) */
 .tarja { display: inline-block; min-width: 38px; padding: 1px 4px; font-weight: bold; text-align: center; border-radius: 2px; }
 .graf-comp { width: 100%; height: auto; }
+/* 19/11/2026: Km | % | Km e % no comparativo (canto do quadro; não entra na impressão) */
+.b-peso { position: relative; }
+.seg-un { position: absolute; top: 8px; right: 10px; display: flex; border: 1px solid #c9d2cc; border-radius: 4px; overflow: hidden; z-index: 1; }
+.seg-un button { font: bold 11px Arial, sans-serif; color: var(--brand); background: #fff; border: 0; padding: 3px 9px; cursor: pointer; }
+.seg-un button + button { border-left: 1px solid #c9d2cc; }
+.seg-un button[aria-pressed="true"] { color: #fff; background: var(--verde); }
+[data-tema=escuro] .seg-un { border-color: var(--borda); }
+[data-tema=escuro] .seg-un button { background: var(--sup2); color: var(--brand); }
+[data-tema=escuro] .seg-un button + button { border-left-color: var(--borda); }
+[data-tema=escuro] .seg-un button[aria-pressed="true"] { color: #fff; background: var(--verde); }
+@media print { .seg-un { display: none !important; } }
 .peso > div:last-child { min-width: 0; }
 [data-tema=escuro] .graf-comp text[fill="#7b3fa0"] { fill: var(--t-mu) !important; }
 [data-tema=escuro] .graf-comp text[fill="#138a72"] { fill: var(--t-lt) !important; stroke: none; }
