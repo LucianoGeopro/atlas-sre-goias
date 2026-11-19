@@ -503,32 +503,6 @@ async function imprimeFolha() {
   try { window.print(); } finally { IMPRIMINDO = false; mostraCtl(); }
 }
 $("#apres-impr").onclick = imprimeFolha;
-// aviso de novidades (19/11/2026): ATUALIZAR A CADA PUBLICAÇÃO — id novo faz o aviso aparecer de novo para todos.
-// Aparece uma vez por atualização (lembrado no navegador), fecha no ✕/Entendi; o botão 🔔 Novidades reabre; nunca no modo apresentação.
-const NOVIDADES = { id: "2026-11-19c", data: "19/11/2026", itens: [
-  "Legendas e símbolos de obras e projetos no padrão oficial: cor pelo tipo de intervenção e traço pela etapa (Estudo Técnico Preliminar, Licitação, Projeto, Obra), com as placas de OAE e OAC.",
-  "Novo botão <b>🖨 Imprimir</b> no modo apresentação: imprime ou salva em PDF a folha do município, ou dos municípios combinados, em A3 deitada.",
-  "Zoom (<b>−</b> / <b>Ajustar</b> / <b>+</b>) também na página de um município no modo apresentação; com zoom, arraste para mover.",
-  "No modo apresentação, os botões ficam escondidos e aparecem ao mexer o mouse.",
-  "Impressora A4: na janela de impressão, escolha “Ajustar à página”.",
-] };
-const CHAVE_NOVID = "novid:" + (location.pathname.split("/")[1] || "local");    // atlas e painel guardam separado
-function mostraNovidades(forcar) {
-  if (APRES) return;
-  if (!forcar) { try { if (localStorage.getItem(CHAVE_NOVID) === NOVIDADES.id) return; } catch (e) {} }
-  const c = $("#novid");
-  c.querySelector(".novid-data").textContent = "· " + NOVIDADES.data;
-  c.querySelector(".novid-lista").innerHTML = NOVIDADES.itens.map(t => `<li>${t}</li>`).join("");
-  c.hidden = false;
-}
-function fechaNovidades() {
-  $("#novid").hidden = true;
-  try { localStorage.setItem(CHAVE_NOVID, NOVIDADES.id); } catch (e) {}
-}
-$("#novid .novid-x").onclick = fechaNovidades;
-$("#novid .novid-ok").onclick = fechaNovidades;
-$("#novid-btn").onclick = () => $("#novid").hidden ? mostraNovidades(true) : fechaNovidades();
-setTimeout(() => mostraNovidades(false), 800);
 // Ctrl + roda do mouse: zoom no ponto do cursor (também sobre o mapa); com zoom, a roda sozinha rola a folha
 window.addEventListener("wheel", e => {
   if (!APRES) return;
