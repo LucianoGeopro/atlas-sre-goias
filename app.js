@@ -631,7 +631,7 @@ function iniciaMapa() {
 
   // 13/11/2026: as camadas nascem vazias e recebem só a área do município selecionado (preencheArea)
   camadas.perimetro = L.geoJSON(null, { renderer: rnd,
-    style: { color: "#f2d24b", weight: 1, fillColor: "#f2d24b", fillOpacity: 0.18 } });
+    style: { color: "#f4f4ef", weight: 1, fillColor: "#f4f4ef", fillOpacity: 0.18 } });   // 19/11/2026: esbranquiçado (antes amarelo)
   camadas.municipios = L.geoJSON(null, { renderer: rnd,
     style: { color: "#ffffff", weight: 1, opacity: 0.8, fillOpacity: 0 },
     onEachFeature: (f, l) => {
@@ -1398,7 +1398,7 @@ function legenda() {
     PJ_PLACAS.map(k => it(placaLg(k), k)).join("") +
     `<div class="lg-tit">Demais</div>` +
     it(`<svg width="34" height="14"><rect x="3" y="2" width="28" height="10" fill="none" stroke="#ffd400" stroke-width="3"/></svg>`, "Limite municipal") +
-    it(`<svg width="34" height="14"><rect x="3" y="2" width="28" height="10" fill="#f2d24b" fill-opacity=".3" stroke="#f2d24b"/></svg>`, "Perímetro urbano") +
+    it(`<svg width="34" height="14"><rect x="3" y="2" width="28" height="10" fill="#5f6b4e"/><rect x="3" y="2" width="28" height="10" fill="#f4f4ef" fill-opacity=".3" stroke="#f4f4ef"/></svg>`, "Perímetro urbano") +
     it(`<svg width="34" height="14"><circle cx="17" cy="7" r="4" fill="#fff" stroke="#222"/></svg>`, "Localidades");
 }
 
