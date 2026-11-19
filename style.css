@@ -173,6 +173,7 @@ svg .hov:hover { opacity: .8; }
 .tab tbody tr:nth-child(even) { background: #f6f8f6; }
 .tab tbody tr:hover { background: #fff6cc; cursor: pointer; }
 .tab tbody tr.sel { background: #ffe680; }
+#t-obras tbody tr[data-i], #t-sre tbody tr[data-i] { cursor: pointer; }   /* clique = zoom no mapa (19/11/2026) */
 .tab .vazio td { color: var(--muted); font-style: italic; cursor: default; }
 .filtro { margin-left: auto; font: inherit; font-size: 12px; font-weight: normal; padding: 3px 8px; border: 1px solid var(--grade);
           border-radius: 3px; color: var(--ink); }
