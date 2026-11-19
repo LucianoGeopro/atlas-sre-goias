@@ -3,7 +3,8 @@
    é lembrado no navegador; o botão #novid-btn (se a página tiver) reabre. Some no modo apresentação e na impressão. */
 (() => {
   "use strict";
-  const NOVIDADES = { id: "2026-11-19d", data: "19/11/2026", itens: [
+  const NOVIDADES = { id: "2026-11-19e", data: "19/11/2026", itens: [
+    "Perímetro urbano no mapa agora em branco transparente (antes amarelo), para destacar as rodovias.",
     "Comparativo da composição da malha: escolha ver os valores em <b>Km</b>, em <b>%</b> ou nos dois (<b>Km e %</b>), no canto do quadro.",
     "Legendas e símbolos de obras e projetos no padrão oficial: cor pelo tipo de intervenção e traço pela etapa (Estudo Técnico Preliminar, Licitação, Projeto, Obra), com as placas de OAE e OAC.",
     "Novo botão <b>🖨 Imprimir</b> no modo apresentação: imprime ou salva em PDF a folha do município, ou dos municípios combinados, em A3 deitada.",
