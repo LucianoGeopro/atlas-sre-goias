@@ -21,7 +21,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <!-- Leaflet 1.9.4 guardado no próprio site (18/11/2026): não depende do unpkg -->
 <link rel="stylesheet" href="lib/leaflet/leaflet.css">
-<link rel="stylesheet" href="style.css?v=30">
+<link rel="stylesheet" href="style.css?v=31">
 <script>try { if (/tema=escuro/.test(location.search) || localStorage.getItem("atlas-tema") === "escuro") document.documentElement.dataset.tema = "escuro"; } catch (e) { if (/tema=escuro/.test(location.search)) document.documentElement.dataset.tema = "escuro"; }
 // página inicial (16/11/2026): aparece ao abrir o link principal; link de município (#código) ou ?capa=0 vai direto ao atlas;
 // F5 mantém o que estava na tela (capa aberta ou fechada) — a aba guarda o estado em sessionStorage
@@ -195,12 +195,6 @@
     <button type="button" class="capa-entrar sobre-entrar sobre-fim">Acessar o atlas ›</button>
   </div>
 </section>
-<aside id="novid" class="novid" hidden role="dialog" aria-labelledby="novid-tit">
-  <button class="novid-x" type="button" aria-label="Fechar">✕</button>
-  <div class="novid-tit" id="novid-tit">🔔 Novidades do site <span class="novid-data"></span></div>
-  <ul class="novid-lista"></ul>
-  <button class="novid-ok" type="button">Entendi</button>
-</aside>
 <div id="folha" class="folha">
 <header class="cab">
   <div class="cab-ante">SISTEMA RODOVIÁRIO ESTADUAL – SRE<br><span class="mes-up"></span></div>
@@ -298,6 +292,7 @@
 <div id="carregando" class="carregando">Carregando o atlas…</div>
 
 <script src="lib/leaflet/leaflet.js"></script>
-<script src="app.js?v=30"></script>
+<script src="app.js?v=31"></script>
+<script src="novidades.js?v=1"></script>
 </body>
 </html>
