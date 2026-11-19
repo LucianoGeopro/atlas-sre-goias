@@ -1048,16 +1048,49 @@ const AreaSel = L.Layer.extend({
     x.globalCompositeOperation = "source-over"; c.style.visibility = "";
   }
 });
-function destacaTrecho(sre) {
-  if (camadas.sel) mapa.removeLayer(camadas.sel);
-  const fs = GEO.sre.features.filter(f => f.properties.sre === sre);
+// clique numa linha dos quadros (SRE e, desde 19/11/2026, obras e projetos): realça no mapa e dá zoom na parte que fica
+// dentro do(s) município(s) selecionado(s) (o trecho do SRE e o projeto vêm inteiros no dado; a obra já vem por município)
+function destacaFeicoes(fs) {
+  if (camadas.sel) { mapa.removeLayer(camadas.sel); camadas.sel = null; }
   if (!fs.length) return;
-  camadas.sel = L.geoJSON({ type: "FeatureCollection", features: fs }, { pane: "topo",
-    style: { color: "#00e5ff", weight: 9, opacity: 0.75 }, interactive: false }).addTo(mapa);
-  const b = camadas.sel.getBounds(), m = BBOX;
-  const mb = L.latLngBounds([[m[1], m[0]], [m[3], m[2]]]);
-  mapa.fitBounds(mb.intersects(b) ? L.latLngBounds(b.getSouthWest(), b.getNorthEast()) : b, { padding: [40, 40], maxZoom: 13 });
-  document.getElementById("mapa").scrollIntoView({ behavior: "smooth", block: "center" });
+  camadas.sel = L.geoJSON({ type: "FeatureCollection", features: fs }, { pane: "topo", interactive: false,
+    style: { color: "#00e5ff", weight: 9, opacity: 0.75 },
+    pointToLayer: (f, ll) => L.circleMarker(ll, { pane: "topo", radius: 16, color: "#00e5ff", weight: 4, opacity: 0.9, fill: false }) }).addTo(mapa);
+  // zoom na parte DENTRO do limite dos municípios selecionados (pontos da linha que caem nos polígonos);
+  // se nenhum ponto cair dentro, a feição inteira
+  const gms = GEO.municipios.features.filter(f => SEL.includes(f.properties.cod)).map(f => f.geometry);
+  const pts = [], ok = c => { if (gms.some(g => dentro(c, g))) pts.push([c[1], c[0]]); };
+  // linhas: também pontos intermediários a cada ~200 m (trecho reto pode ter só um vértice dentro do município)
+  const vai = c => {
+    if (typeof c[0] === "number") return ok(c);
+    if (typeof c[0][0] !== "number") return c.forEach(vai);
+    c.forEach((p, i) => { ok(p); const q = c[i + 1]; if (!q) return;
+      const n = Math.min(200, Math.floor(Math.hypot(q[0] - p[0], q[1] - p[1]) / 0.002));
+      for (let k = 1; k < n; k++) ok([p[0] + (q[0] - p[0]) * k / n, p[1] + (q[1] - p[1]) * k / n]); });
+  };
+  fs.forEach(f => vai(f.geometry.coordinates));
+  const alvo = pts.length ? L.latLngBounds(pts) : camadas.sel.getBounds();
+  mapa.fitBounds(alvo, { padding: [40, 40], maxZoom: 14 });
+  if (!APRES) document.getElementById("mapa").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+// trecho do quadro que não está no mapa do SRE (coincidente com BR / jurisdição federal): a geometria vem de
+// data/<mês>/sre_zoom.geojson, baixado só no primeiro clique que precisar (19/11/2026)
+const SRE_ZOOM = {};
+async function destacaTrecho(sre) {
+  let fs = GEO.sre.features.filter(f => f.properties.sre === sre);
+  if (!fs.length) {
+    const mes = MES_SITE, base = typeof DADOS !== "undefined" ? DADOS : "";
+    SRE_ZOOM[mes] = SRE_ZOOM[mes] || fetch(`${base}data/${mes}/sre_zoom.geojson`).then(r => r.ok ? r.json() : { features: [] })
+      .catch(() => ({ features: [] }));
+    fs = (await SRE_ZOOM[mes]).features.filter(f => f.properties.sre === sre);
+  }
+  destacaFeicoes(fs);
+}
+function destacaObra(l) {
+  const pontual = l.tipo === "Pontual", projeto = l.natureza === "Projeto";
+  const n = (projeto ? "dpj_" : "dor_") + (pontual ? "pontos" : "linhas");
+  destacaFeicoes((GEO[n]?.features || []).filter(f => f.properties.codigo === l.codigo &&
+    (projeto && !pontual ? (f.properties.mun || []).some(c => SEL.includes(c)) : SEL.includes(f.properties.cod_ibge))));
 }
 
 /* ---------------- seleção: um ou vários municípios (13/11/2026) ---------------- */
@@ -1413,7 +1446,8 @@ function tabelaObras(m, multi = false) {
     { k: "mapa", t: "Mapa", f: (v, l) => `<span class="tarja" style="background:${l._cor[0]};color:${l._cor[1]}">${esc(v)}</span>` },
     { k: "codigo", t: "Código" }, { k: "rodovia", t: "Rodovia" }, { k: "intervencao", t: "Intervenção" },
     { k: "tipo", t: "Tipo" }, { k: "km_mun", t: "Km mun.", f: v => num(v, 2) }, { k: "km_contrato", t: "Km contr.", f: v => num(v, 2) },
-    { k: "etapa", t: "Etapa" }, { k: "situacao", t: "Situação" }, { k: "natureza", t: "Natureza" }], ls, "Sem obras e projetos para o município");
+    { k: "etapa", t: "Etapa" }, { k: "situacao", t: "Situação" }, { k: "natureza", t: "Natureza" }], ls, "Sem obras e projetos para o município",
+    l => destacaObra(l));
 }
 let tSRE = null;
 function tabelaSRE(m, multi = false) {
