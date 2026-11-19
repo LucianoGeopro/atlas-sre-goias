@@ -21,7 +21,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <!-- Leaflet 1.9.4 guardado no próprio site (18/11/2026): não depende do unpkg -->
 <link rel="stylesheet" href="lib/leaflet/leaflet.css">
-<link rel="stylesheet" href="style.css?v=27">
+<link rel="stylesheet" href="style.css?v=28">
 <script>try { if (/tema=escuro/.test(location.search) || localStorage.getItem("atlas-tema") === "escuro") document.documentElement.dataset.tema = "escuro"; } catch (e) { if (/tema=escuro/.test(location.search)) document.documentElement.dataset.tema = "escuro"; }
 // página inicial (16/11/2026): aparece ao abrir o link principal; link de município (#código) ou ?capa=0 vai direto ao atlas;
 // F5 mantém o que estava na tela (capa aberta ou fechada) — a aba guarda o estado em sessionStorage
@@ -283,6 +283,7 @@
     <button id="apres-zmenos" type="button" title="Afastar (−  ou  Ctrl + roda do mouse)" aria-label="Afastar">−</button>
     <button id="apres-zajusta" type="button" title="Ajustar à tela (0)"><span id="apres-zval">100%</span> · Ajustar</button>
     <button id="apres-zmais" type="button" title="Aproximar (+  ou  Ctrl + roda do mouse); com zoom, arraste para mover" aria-label="Aproximar">+</button>
+    <button id="apres-impr" type="button" title="Imprimir ou salvar em PDF (folha A3 deitada)">🖨 Imprimir</button>
   </div>
 </div>
 
@@ -290,6 +291,6 @@
 <div id="carregando" class="carregando">Carregando o atlas…</div>
 
 <script src="lib/leaflet/leaflet.js"></script>
-<script src="app.js?v=26"></script>
+<script src="app.js?v=27"></script>
 </body>
 </html>
