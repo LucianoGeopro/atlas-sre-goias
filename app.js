@@ -666,6 +666,7 @@ function iniciaMapa() {
   const pjBase = L.geoJSON(null, { renderer: rnd, pane: "projetos", style: base,
       onEachFeature: (f, l) => { l.bindTooltip(dica("Projeto", f.properties), { sticky: true }); balaoMapa(l, () => htmlObra(f.properties, true)); } });
   const pjTopo = L.geoJSON(null, { renderer: rnd, pane: "projetos", interactive: false, style: topo });
+  dorCor._topo = pjTopo._topo = true;              // traço branco: não é desenhado com zoom afastado (preencheArea)
   camadas.projL = L.layerGroup([pjBase, pjTopo]);
   camadas.projP = L.geoJSON(null, { pane: "projP",
     pointToLayer: (f, ll) => L.marker(ll, { pane: "projP", icon: placa(f, true) }),
@@ -792,6 +793,13 @@ function iniciaMapa() {
   // rótulos só quando o zoom muda; arrastar só redesenha a grade (13/11/2026: arrasto ficava lento)
   mapa.on("zoomend", atualizaRotulos);
   mapa.on("moveend", () => { if (mapa.hasLayer(camadas.grade)) desenhaGrade(); });
+  mapa.on("moveend", () => {                       // visão saiu da área desenhada: desenha também o que ficou visível
+    if (!BBOX || !ZONA) return;
+    const v = visaoMapa();
+    if (v[0] >= ZONA[0] && v[1] >= ZONA[1] && v[2] <= ZONA[2] && v[3] <= ZONA[3] && zoomBaixo() === NIVEL) return;
+    preencheArea([Math.min(v[0], ZONA[0]), Math.min(v[1], ZONA[1]), Math.max(v[2], ZONA[2]), Math.max(v[3], ZONA[3])]);
+    atualizaRotulos();
+  });
 }
 
 /* ---------- desenhar só a área do município (13/11/2026: desempenho) ---------- */
@@ -802,12 +810,55 @@ function caixa(g) {                        // [xmin, ymin, xmax, ymax] de qualqu
   if (g && g.coordinates) vai(g.coordinates);
   return [x0, y0, x1, y1];
 }
-function preencheArea() {
+// 19/11/2026: a área desenhada cresce com a visão do mapa (afastar o zoom ou arrastar mostra todos os municípios de Goiás);
+// ZONA = caixa já desenhada; só redesenha quando a visão sai dela
+let ZONA = null, NIVEL = null;
+function visaoMapa() { const v = mapa.getBounds().pad(0.25); return [v.getWest(), v.getSouth(), v.getEast(), v.getNorth()]; }
+// 19/11/2026: leveza com zoom afastado (≤ Z_BAIXO): linhas e contornos simplificados (Douglas-Peucker, ~300 m, menos de
+// 1 pixel nesse zoom) e sem o traço branco de obras/projetos; ao aproximar volta o desenho completo
+const Z_BAIXO = 8, TOL_BAIXO = 0.003, GEO_S = {};
+const zoomBaixo = () => mapa.getZoom() <= Z_BAIXO;
+function rdp(pts, tol) {
+  if (pts.length < 3) return pts;
+  const t2 = tol * tol, keep = new Uint8Array(pts.length), pilha = [[0, pts.length - 1]];
+  keep[0] = keep[pts.length - 1] = 1;
+  while (pilha.length) {
+    const [a, b] = pilha.pop(), [ax, ay] = pts[a], [bx, by] = pts[b], dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+    let mx = 0, mi = -1;
+    for (let i = a + 1; i < b; i++) {
+      const [px, py] = pts[i]; let t = l2 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const ex = ax + t * dx - px, ey = ay + t * dy - py, d = ex * ex + ey * ey; if (d > mx) { mx = d; mi = i; }
+    }
+    if (mx > t2) { keep[mi] = 1; pilha.push([a, mi], [mi, b]); }
+  }
+  return pts.filter((_, i) => keep[i]);
+}
+function geoSimples(g) {
+  const s = c => rdp(c, TOL_BAIXO);
+  switch (g && g.type) {
+    case "LineString": return { type: g.type, coordinates: s(g.coordinates) };
+    case "MultiLineString": case "Polygon": return { type: g.type, coordinates: g.coordinates.map(s) };
+    case "MultiPolygon": return { type: g.type, coordinates: g.coordinates.map(p => p.map(s)) };
+    default: return g;
+  }
+}
+const fontes = n => {                               // feições da camada no nível de zoom atual
+  if (!zoomBaixo() || n === "localidades") return GEO[n].features;
+  return GEO_S[n] || (GEO_S[n] = GEO[n].features.map(f => ({ ...f, geometry: geoSimples(f.geometry) })));
+};
+function preencheArea(extra) {
   // seleção + uma margem de meia largura em cada lado (pega os vizinhos e o que o enquadramento mostra)
   const b = BBOX, mx = Math.max(b[2] - b[0], b[3] - b[1]) * 0.6;
-  const z = [b[0] - mx, b[1] - mx, b[2] + mx, b[3] + mx];
-  const dentroZ = bb => !(bb[2] < z[0] || bb[0] > z[2] || bb[3] < z[1] || bb[1] > z[3]);
-  AREA.forEach(([lyr, n]) => { lyr.clearLayers(); lyr.addData({ type: "FeatureCollection", features: GEO[n].features.filter(f => dentroZ(f._bb)) }); });
+  const z0 = [b[0] - mx, b[1] - mx, b[2] + mx, b[3] + mx];
+  const z = extra ? [Math.min(z0[0], extra[0]), Math.min(z0[1], extra[1]), Math.max(z0[2], extra[2]), Math.max(z0[3], extra[3])] : z0;
+  ZONA = z;
+  const em = c => bb => !(bb[2] < c[0] || bb[0] > c[2] || bb[3] < c[1] || bb[1] > c[3]), dentroZ = em(z);
+  // localidades ficam só em volta da seleção (no estado inteiro seriam milhares de pontos)
+  const baixo = zoomBaixo(); NIVEL = baixo;
+  AREA.forEach(([lyr, n]) => { const ok = n === "localidades" ? em(z0) : dentroZ;
+    lyr.clearLayers();
+    if (baixo && lyr._topo) return;                  // zoom afastado: obra/projeto só com a faixa colorida
+    lyr.addData({ type: "FeatureCollection", features: fontes(n).filter(f => ok(f._bb)) }); });
   camadas.rotMun.clearLayers();
   GEO.municipios.features.filter(f => dentroZ(f._bb)).forEach(f => {
     const mk = L.marker(f._centro, { interactive: false, pane: "rotulos",
