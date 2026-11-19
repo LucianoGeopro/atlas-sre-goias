@@ -1277,11 +1277,17 @@ function miniMapa(cods, lts) {
   });
   return s + "</svg>";
 }
+// 19/11/2026: o comparativo mostra o dado em Km, em % ou nos dois (só muda o texto das barras; desenho e cores iguais)
+const UN_PESO = { km: ["Km", "Km por situação"], pct: ["%", "% da extensão total por situação"], ambos: ["Km e %", "Km e % por situação"] };
+let MODO_PESO = "km";
+try { const u = localStorage.getItem("atlas-peso-un"); if (UN_PESO[u]) MODO_PESO = u; } catch (e) {}
 function grafPeso(cods, m) {
   const ml = m.peso || {}, ms = {};
   Object.values(ml).forEach(r => Object.entries(r).forEach(([s, v]) => ms[s] = (ms[s] || 0) + v));
   const tm = soma(ms);
-  let h = cab("Comparativo da composição da malha", "Km por situação (estaduais principais)");
+  let h = `<div class="seg-un" role="group" aria-label="Mostrar o dado em">${Object.entries(UN_PESO).map(([k, [t]]) =>
+      `<button type="button" data-un="${k}" aria-pressed="${k === MODO_PESO}">${t}</button>`).join("")}</div>` +
+    cab("Comparativo da composição da malha", UN_PESO[MODO_PESO][1] + " (estaduais principais)");
   if (!tm) { $("#g-peso").innerHTML = h + `<div class="g-vazio">${SEM}</div>`; return; }
   const lts = Object.keys(ml).sort((a, b) => soma(ml[b]) - soma(ml[a]));
   const GO = A.goias.situacao, GOt = A.goias.total, LT = A.lotes;
@@ -1299,11 +1305,17 @@ function grafPeso(cods, m) {
     s += `<text x="${x0 - 8}" y="${y + bh / 2 + 4}" font-size="11.5" font-weight="bold" text-anchor="end" style="fill:${l.cor}" fill="${l.cor}">${esc(l.rot)}</text>`;
     for (const c of sits) {
       const v = l.r[c]; if (!v) continue;
-      const w = bw * v / tot, rot = km2(v);
+      const w = bw * v / tot, rot = km2(v), pc = br(100 * v / tot) + "%";
       s += `<rect class="hov" x="${x}" y="${y}" width="${Math.max(w, 0.8)}" height="${bh}" fill="${SIT[c][1]}" stroke="#fff" stroke-width=".6"
-              data-tip="<b>${esc(l.rot)}</b><br>${SIT[c][0]}: ${rot} (${br(100 * v / tot)}%)"/>`;
-      if (w > textW(rot, 9.5) + 8) s += `<text x="${x + w / 2}" y="${y + bh / 2 + 3.5}" font-size="9.5" font-weight="bold" text-anchor="middle" pointer-events="none"
-              fill="${BRANCO.has(c) ? "#fff" : "#0b0b0b"}">${rot}</text>`;
+              data-tip="<b>${esc(l.rot)}</b><br>${SIT[c][0]}: ${rot} (${pc})"/>`;
+      const tc = `font-weight="bold" text-anchor="middle" pointer-events="none" fill="${BRANCO.has(c) ? "#fff" : "#0b0b0b"}"`;
+      if (MODO_PESO === "ambos") {          // duas linhas dentro da barra: Km em cima, % embaixo
+        if (w > textW(rot, 9) + 8) s += `<text x="${x + w / 2}" y="${y + 9.5}" font-size="9" ${tc}>${rot}</text>` +
+          `<text x="${x + w / 2}" y="${y + 19}" font-size="9" ${tc}>${pc}</text>`;
+      } else {
+        const t = MODO_PESO === "pct" ? pc : rot;
+        if (w > textW(t, 9.5) + 8) s += `<text x="${x + w / 2}" y="${y + bh / 2 + 3.5}" font-size="9.5" ${tc}>${t}</text>`;
+      }
       x += w;
     }
     s += `<text x="${xT}" y="${y + bh / 2 + 4}" font-size="11" font-weight="bold" style="fill:${l.cor}" fill="${l.cor}">${km2(tot)}</text>`;
@@ -1312,6 +1324,11 @@ function grafPeso(cods, m) {
   const nm0 = m.multi ? `Seleção: ${cods.length} municípios` : (m.nome.length <= 22 ? m.nome : m.nome.slice(0, 21) + "…");
   $("#g-peso").innerHTML = h + `<div class="peso"><div class="peso-mapa">${miniMapa(cods, lts)}
         <div class="peso-rot"><span style="color:${T_MU}">${esc(nm0)}</span><br><span style="color:${T_LT}">${esc(rl)}</span><br><span style="color:${T_GO}">Goiás</span></div></div><div>${s}</div></div>`;
+  $("#g-peso").querySelectorAll(".seg-un button").forEach(b => b.onclick = () => {
+    MODO_PESO = b.dataset.un; try { localStorage.setItem("atlas-peso-un", MODO_PESO); } catch (e) {}
+    grafPeso(cods, m);
+    if (APRES && !IMG) ajustaFolha();
+  });
 }
 
 /* ---------------- tabelas ---------------- */
