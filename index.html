@@ -21,7 +21,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <!-- Leaflet 1.9.4 guardado no próprio site (18/11/2026): não depende do unpkg -->
 <link rel="stylesheet" href="lib/leaflet/leaflet.css">
-<link rel="stylesheet" href="style.css?v=29">
+<link rel="stylesheet" href="style.css?v=30">
 <script>try { if (/tema=escuro/.test(location.search) || localStorage.getItem("atlas-tema") === "escuro") document.documentElement.dataset.tema = "escuro"; } catch (e) { if (/tema=escuro/.test(location.search)) document.documentElement.dataset.tema = "escuro"; }
 // página inicial (16/11/2026): aparece ao abrir o link principal; link de município (#código) ou ?capa=0 vai direto ao atlas;
 // F5 mantém o que estava na tela (capa aberta ou fechada) — a aba guarda o estado em sessionStorage
@@ -195,6 +195,12 @@
     <button type="button" class="capa-entrar sobre-entrar sobre-fim">Acessar o atlas ›</button>
   </div>
 </section>
+<aside id="novid" class="novid" hidden role="dialog" aria-labelledby="novid-tit">
+  <button class="novid-x" type="button" aria-label="Fechar">✕</button>
+  <div class="novid-tit" id="novid-tit">🔔 Novidades do site <span class="novid-data"></span></div>
+  <ul class="novid-lista"></ul>
+  <button class="novid-ok" type="button">Entendi</button>
+</aside>
 <div id="folha" class="folha">
 <header class="cab">
   <div class="cab-ante">SISTEMA RODOVIÁRIO ESTADUAL – SRE<br><span class="mes-up"></span></div>
@@ -212,6 +218,7 @@
   <button id="apres" class="link-btn" type="button" title="Ver a página do município como no caderno impresso, em tela cheia">▣ Modo apresentação</button>
   <select id="mes" class="mes-sel" aria-label="Mês da base do SRE" title="Mês da base do SRE" hidden></select>
   <button id="ver-capa" class="tema-btn" type="button" title="Ver a capa">Capa</button>
+  <button id="novid-btn" class="tema-btn" type="button" title="Novidades: o que mudou na última atualização do site" aria-label="Novidades do site">🔔</button>
   <button id="ver-sobre" class="tema-btn abre-sobre" type="button" title="O que são os dados e como são calculados">ⓘ Sobre os dados</button>
   <button id="tema" class="tema-btn" type="button" title="Alternar tema claro/escuro">🌙 Tema escuro</button>
   <div id="selecao" class="selecao" hidden aria-live="polite"></div>
@@ -291,6 +298,6 @@
 <div id="carregando" class="carregando">Carregando o atlas…</div>
 
 <script src="lib/leaflet/leaflet.js"></script>
-<script src="app.js?v=28"></script>
+<script src="app.js?v=30"></script>
 </body>
 </html>
