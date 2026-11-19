@@ -620,6 +620,10 @@ function iniciaMapa() {
   mapa.createPane("rotulos").style.zIndex = 620;
   mapa.getPane("rotulos").style.pointerEvents = "none";
   mapa.createPane("mascara").style.zIndex = 390;
+  // 19/11/2026: destaque do clique no quadro fica POR BAIXO das linhas — entre a máscara (390) e o canvas único onde
+  // SRE, obras e projetos são desenhados (overlayPane, 400)
+  mapa.createPane("realce").style.zIndex = 395;
+  mapa.getPane("realce").style.pointerEvents = "none";
   mapa.createPane("vias").style.zIndex = 420;
   mapa.createPane("projetos").style.zIndex = 425;   // obra tem mais peso: projetos ficam por baixo das obras
   mapa.createPane("obras").style.zIndex = 430;
@@ -1053,9 +1057,13 @@ const AreaSel = L.Layer.extend({
 function destacaFeicoes(fs) {
   if (camadas.sel) { mapa.removeLayer(camadas.sel); camadas.sel = null; }
   if (!fs.length) return;
-  camadas.sel = L.geoJSON({ type: "FeatureCollection", features: fs }, { pane: "topo", interactive: false,
-    style: { color: "#00e5ff", weight: 9, opacity: 0.75 },
-    pointToLayer: (f, ll) => L.circleMarker(ll, { pane: "topo", radius: 16, color: "#00e5ff", weight: 4, opacity: 0.9, fill: false }) }).addTo(mapa);
+  // destaque por baixo da linha (a cor da legenda continua visível por cima): sombra escura larga e suave +
+  // auréola clara; nos pontos, a mesma auréola atrás da placa
+  const fc = { type: "FeatureCollection", features: fs };
+  const camada = (cor, peso, op, raio) => L.geoJSON(fc, { pane: "realce", interactive: false,
+    style: { color: cor, weight: peso, opacity: op, lineCap: "round", lineJoin: "round" },
+    pointToLayer: (f, ll) => L.circleMarker(ll, { pane: "realce", radius: raio, stroke: false, fillColor: cor, fillOpacity: op }) });
+  camadas.sel = L.featureGroup([camada("#000000", 24, 0.22, 22), camada("#ffffff", 15, 0.9, 17)]).addTo(mapa);
   // zoom na parte DENTRO do limite dos municípios selecionados (pontos da linha que caem nos polígonos);
   // se nenhum ponto cair dentro, a feição inteira
   const gms = GEO.municipios.features.filter(f => SEL.includes(f.properties.cod)).map(f => f.geometry);
