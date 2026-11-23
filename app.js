@@ -613,22 +613,23 @@ function estiloSRE(f) {
 }
 function iniciaMapa() {
   mapa = L.map("mapa", { preferCanvas: true, zoomSnap: 0.25, attributionControl: true, zoomControl: false });
+  mapa.attributionControl.setPrefix(false);   // 23/11/2026: crédito só do fundo em uso, sem "Leaflet"
   // 13/11/2026: sem filtro CSS nas imagens de satélite (o filtro em cada imagem deixava o arrasto pesado)
   const satelite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-    maxZoom: 18, attribution: "Imagem: Esri, Maxar, Earthstar Geographics"
+    maxZoom: 18, attribution: "Esri"
   }).addTo(mapa);
   // 23/11/2026: outros fundos (um por vez, escolhidos na faixa abaixo do mapa); o satélite é sempre o padrão ao abrir
   const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/";
   camadas.fundos = {
     satelite: satelite,
     satNomes: L.layerGroup([satelite, L.tileLayer(ESRI + "Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
-      { maxZoom: 18, zIndex: 2, attribution: "Nomes: Esri" })]),
+      { maxZoom: 18, zIndex: 2 })]),
     osm: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-      { maxZoom: 18, attribution: "© colaboradores do OpenStreetMap" }),
+      { maxZoom: 18, attribution: "© OpenStreetMap" }),
     claro: L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-      { maxZoom: 18, subdomains: "abcd", attribution: "© OpenStreetMap · © CARTO" }),
+      { maxZoom: 18, subdomains: "abcd", attribution: "© OpenStreetMap, CARTO" }),
     topo: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
-      { maxZoom: 18, maxNativeZoom: 17, subdomains: "abc", attribution: "© OpenStreetMap · SRTM · OpenTopoMap (CC-BY-SA)" })
+      { maxZoom: 18, maxNativeZoom: 17, subdomains: "abc", attribution: "© OpenTopoMap" })
   };
   camadas.fundo = "satelite";
   mapa.createPane("rotulos").style.zIndex = 620;
