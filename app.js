@@ -626,8 +626,10 @@ function iniciaMapa() {
       { maxZoom: 18, zIndex: 2 })]),
     osm: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
       { maxZoom: 18, attribution: "© OpenStreetMap" }),
-    claro: L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-      { maxZoom: 18, subdomains: "abcd", attribution: "© OpenStreetMap, CARTO" }),
+    // 23/11/2026: CARTO passou a pedir chave (API key) no site publicado → cinza claro da Esri, sem chave
+    claro: L.layerGroup([L.tileLayer(ESRI + "Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+      { maxZoom: 18, maxNativeZoom: 16, attribution: "Esri" }),
+      L.tileLayer(ESRI + "Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}", { maxZoom: 18, maxNativeZoom: 16, zIndex: 2 })]),
     topo: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
       { maxZoom: 18, maxNativeZoom: 17, subdomains: "abc", attribution: "© OpenTopoMap" })
   };
