@@ -617,6 +617,20 @@ function iniciaMapa() {
   const satelite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
     maxZoom: 18, attribution: "Imagem: Esri, Maxar, Earthstar Geographics"
   }).addTo(mapa);
+  // 23/11/2026: outros fundos (um por vez, escolhidos na faixa abaixo do mapa); o satélite é sempre o padrão ao abrir
+  const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/";
+  camadas.fundos = {
+    satelite: satelite,
+    satNomes: L.layerGroup([satelite, L.tileLayer(ESRI + "Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+      { maxZoom: 18, zIndex: 2, attribution: "Nomes: Esri" })]),
+    osm: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      { maxZoom: 18, attribution: "© colaboradores do OpenStreetMap" }),
+    claro: L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+      { maxZoom: 18, subdomains: "abcd", attribution: "© OpenStreetMap · © CARTO" }),
+    topo: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+      { maxZoom: 18, maxNativeZoom: 17, subdomains: "abc", attribution: "© OpenStreetMap · SRTM · OpenTopoMap (CC-BY-SA)" })
+  };
+  camadas.fundo = "satelite";
   mapa.createPane("rotulos").style.zIndex = 620;
   mapa.getPane("rotulos").style.pointerEvents = "none";
   mapa.createPane("mascara").style.zIndex = 390;
@@ -720,6 +734,27 @@ function iniciaMapa() {
         <text x="20" y="54" text-anchor="middle" font-size="13" font-weight="bold" font-family="Arial" fill="#222">N</text></svg>`;
       return d; } });
   new Norte().addTo(mapa);
+  // 23/11/2026: ícone de camadas logo após "Coordenadas" (à esquerda) — abre a lista dos fundos (satélite é sempre o padrão)
+  const Fundo = L.Control.extend({ options: { position: "topleft" },
+    onAdd() { const d = L.DomUtil.create("div", "fundo-ctl");
+      const FUNDOS = [["satelite", "Satélite"], ["satNomes", "Satélite + nomes"], ["osm", "OpenStreetMap"],
+        ["claro", "Ruas (claro)"], ["topo", "Topográfico"], ["nenhum", "Sem fundo"]];
+      d.innerHTML = `<button type="button" class="fundo-btn" title="Fundo do mapa" aria-label="Fundo do mapa" aria-expanded="false">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#444" stroke-width="1.6" stroke-linejoin="round">
+        <path d="m2.5 16 9.5 5 9.5-5"/><path d="m2.5 12 9.5 5 9.5-5"/><path d="M12 3 2.5 8 12 13l9.5-5z" fill="#fff"/></svg></button>
+        <div class="fundo-menu" hidden><b>Fundo do mapa</b>` +
+        FUNDOS.map(([k, t]) => `<label><input type="radio" name="fundo" value="${k}" ${camadas.fundo === k ? "checked" : ""}> ${t}</label>`).join("") +
+        `</div>`;
+      L.DomEvent.disableClickPropagation(d); L.DomEvent.disableScrollPropagation(d);
+      const btn = d.querySelector(".fundo-btn"), menu = d.querySelector(".fundo-menu");
+      const abre = v => { menu.hidden = !v; btn.setAttribute("aria-expanded", v); };
+      btn.onclick = () => abre(menu.hidden);
+      document.addEventListener("click", e => { if (!d.contains(e.target)) abre(false); });
+      d.querySelectorAll("input[name=fundo]").forEach(r => r.onchange = () => {
+        const ant = camadas.fundos[camadas.fundo]; if (ant) mapa.removeLayer(ant);
+        camadas.fundo = r.value; const novo = camadas.fundos[r.value]; if (novo) mapa.addLayer(novo);
+      });
+      return d; } });
   painelCamadas();
   // barra de escala (18/11/2026): como a do caderno — caixa dupla com 3 a 5 segmentos, "Km" com K maiúsculo.
   // Metros por pixel medidos no centro do mapa (distância no elipsoide), não pela fórmula do zoom.
@@ -783,6 +818,7 @@ function iniciaMapa() {
       b.textContent = "⌖ Coordenadas"; b.title = "Clique no mapa para copiar a coordenada (graus decimais)";
       L.DomEvent.on(b, "click", e => { L.DomEvent.stop(e); ligaCoord(!COORD); }); this._b = b; return b; } });
   const co = new Coord().addTo(mapa);
+  new Fundo().addTo(mapa);
   const Leitura = L.Control.extend({ options: { position: "bottomleft" },
     onAdd() { this._d = L.DomUtil.create("div", "leitura-coord"); this._d.hidden = true; return this._d; } });
   const lei = new Leitura().addTo(mapa);
@@ -956,7 +992,6 @@ function painelCamadas() {
     ["sre", "SRE – " + A.rotulo], ["dorL", "Obras"], ["dorP", "Obras pontuais"], ["projL", "Projetos"], ["projP", "Projetos pontuais"],
     ["snv", "SNV – rodovias federais"], ["loc", "Localidades"], ["perimetro", "Perímetro urbano"],
     ["municipios", "Limites municipais"], ["lotes", "Lotes de manutenção"], ["grade", "Grade de coordenadas"],
-    ["satelite", "Imagem de satélite"],
     ["Rótulos"], ["r:vias", "Rodovias (GO / BR)"], ["r:mun", "Municípios"], ["r:loc", "Localidades"], ["r:lotes", "Lotes"]];
   // painel fora do mapa (logo abaixo dele): no mapa ficam só os elementos da visualização
   const d = document.getElementById("camadas"), grupos = [];
@@ -964,7 +999,7 @@ function painelCamadas() {
   d.innerHTML = grupos.map(g => `<div class="camadas-grp"><span class="camadas-tit">${g.tit}:</span>` +
     g.l.map(([k, t]) => `<label><input type="checkbox" data-k="${k}" ${k.startsWith("r:") ? (ROT[k.slice(2)] ? "checked" : "") : (mapa.hasLayer(camadas[k]) ? "checked" : "")}> ${t}</label>`).join("") +
     `</div>`).join("");
-  d.querySelectorAll("input").forEach(cb => cb.onchange = () => {
+  d.querySelectorAll("input[type=checkbox]").forEach(cb => cb.onchange = () => {
     const k = cb.dataset.k;
     if (k.startsWith("r:")) ROT[k.slice(2)] = cb.checked;
     else cb.checked ? mapa.addLayer(camadas[k]) : mapa.removeLayer(camadas[k]);
