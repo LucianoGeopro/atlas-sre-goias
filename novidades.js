@@ -3,17 +3,12 @@
    é lembrado no navegador; o botão #novid-btn (se a página tiver) reabre. Some no modo apresentação e na impressão. */
 (() => {
   "use strict";
-  const NOVIDADES = { id: "2026-11-23", data: "23/11/2026", itens: [
-    "Novo: botão de <b>camadas</b> no mapa, ao lado de <b>Coordenadas</b>, para trocar o fundo: Satélite (padrão), Satélite + nomes, OpenStreetMap, Ruas (claro) ou Topográfico.",
-    "Quadros de obras e projetos e de trechos do SRE: clique numa linha e o mapa dá zoom nela, dentro do município.",
-    "Mapa: ao afastar o zoom ou arrastar, aparecem todos os municípios de Goiás, com as rodovias, obras e projetos.",
-    "Perímetro urbano no mapa agora em branco transparente (antes amarelo), para destacar as rodovias.",
-    "Comparativo da composição da malha: escolha ver os valores em <b>Km</b>, em <b>%</b> ou nos dois (<b>Km e %</b>), no canto do quadro.",
-    "Legendas e símbolos de obras e projetos no padrão oficial: cor pelo tipo de intervenção e traço pela etapa (Estudo Técnico Preliminar, Licitação, Projeto, Obra), com as placas de OAE e OAC.",
-    "Novo botão <b>🖨 Imprimir</b> no modo apresentação: imprime ou salva em PDF a folha do município, ou dos municípios combinados, em A3 deitada.",
-    "Zoom (<b>−</b> / <b>Ajustar</b> / <b>+</b>) também na página de um município no modo apresentação; com zoom, arraste para mover.",
-    "No modo apresentação, os botões ficam escondidos e aparecem ao mexer o mouse.",
-    "Impressora A4: na janela de impressão, escolha “Ajustar à página”.",
+  const NOVIDADES = { id: "2026-11-25", data: "25/11/2026", itens: [
+    "Obras e projetos atualizados com os cadastros de 25/11/2026.",
+    "Novos projetos: pavimentação em Aloândia, Hidrolândia, Bom Jesus de Goiás / Goiatuba e Trindade / Goiânia; ponte sobre o Rio dos Bois (Diorama) e duas interseções em desnível na GO-222 (Nova Veneza).",
+    "Nova obra: pavimentação de estrada vicinal em Itaberaí.",
+    "Situação das obras atualizada conforme o cadastro (contratadas, em andamento, suspensas).",
+    "Saíram do cadastro: o projeto de duplicação da GO-174 / GO-422 (Cachoeira Alta / Rio Verde) e o projeto da ponte sobre o Rio das Almas na GO-241 (Cavalcante).",
   ] };
   const CHAVE = "novid:" + (location.pathname.split("/")[1] || "local");     // atlas e painel guardam separado
   const css = `
