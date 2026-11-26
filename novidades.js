@@ -3,8 +3,10 @@
    é lembrado no navegador; o botão #novid-btn (se a página tiver) reabre. Some no modo apresentação e na impressão. */
 (() => {
   "use strict";
-  const NOVIDADES = { id: "2026-11-26", data: "26/11/2026", itens: [
-    "Projetos atualizados com o cadastro de 26/11/2026: saíram quatro projetos de pavimentação na GO-116 e na GO-236, em São João d'Aliança, Flores de Goiás e Formosa.",
+  const NOVIDADES = { id: "2026-11-26b", data: "26/11/2026", itens: [
+    "<b>Projetos atualizados</b> com o cadastro de 26/11/2026: o site passa a mostrar 151 projetos (antes eram 155).",
+    "Saíram do cadastro quatro projetos de pavimentação, todos na etapa Projeto: <b>GO-236 / GO-114</b>, do entroncamento da GO-116 ao perímetro urbano de Flores de Goiás (Flores de Goiás / São João d'Aliança); <b>GO-116</b>, do Km 22 ao entroncamento da GO-236 (Formosa / São João d'Aliança); <b>GO-236</b>, do entroncamento da GO-116 ao da GO-118 (São João d'Aliança); e <b>GO-116</b>, entre os dois entroncamentos com a GO-236 (São João d'Aliança).",
+    "Nenhum projeto novo e nenhuma mudança nos demais projetos. As obras continuam iguais.",
   ] };
   /* 25/11/2026: Obras e projetos atualizados com os cadastros de 25/11/2026. | Novos projetos: pavimentação em Aloândia, Hidrolândia,
      Bom Jesus de Goiás / Goiatuba e Trindade / Goiânia; ponte sobre o Rio dos Bois (Diorama) e duas interseções em desnível na GO-222
