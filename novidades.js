@@ -3,13 +3,14 @@
    é lembrado no navegador; o botão #novid-btn (se a página tiver) reabre. Some no modo apresentação e na impressão. */
 (() => {
   "use strict";
-  const NOVIDADES = { id: "2026-11-25", data: "25/11/2026", itens: [
-    "Obras e projetos atualizados com os cadastros de 25/11/2026.",
-    "Novos projetos: pavimentação em Aloândia, Hidrolândia, Bom Jesus de Goiás / Goiatuba e Trindade / Goiânia; ponte sobre o Rio dos Bois (Diorama) e duas interseções em desnível na GO-222 (Nova Veneza).",
-    "Nova obra: pavimentação de estrada vicinal em Itaberaí.",
-    "Situação das obras atualizada conforme o cadastro (contratadas, em andamento, suspensas).",
-    "Saíram do cadastro: o projeto de duplicação da GO-174 / GO-422 (Cachoeira Alta / Rio Verde) e o projeto da ponte sobre o Rio das Almas na GO-241 (Cavalcante).",
+  const NOVIDADES = { id: "2026-11-26", data: "26/11/2026", itens: [
+    "Projetos atualizados com o cadastro de 26/11/2026: saíram quatro projetos de pavimentação na GO-116 e na GO-236, em São João d'Aliança, Flores de Goiás e Formosa.",
   ] };
+  /* 25/11/2026: Obras e projetos atualizados com os cadastros de 25/11/2026. | Novos projetos: pavimentação em Aloândia, Hidrolândia,
+     Bom Jesus de Goiás / Goiatuba e Trindade / Goiânia; ponte sobre o Rio dos Bois (Diorama) e duas interseções em desnível na GO-222
+     (Nova Veneza). | Nova obra: pavimentação de estrada vicinal em Itaberaí. | Situação das obras atualizada conforme o cadastro
+     (contratadas, em andamento, suspensas). | Saíram do cadastro: o projeto de duplicação da GO-174 / GO-422 (Cachoeira Alta / Rio Verde)
+     e o projeto da ponte sobre o Rio das Almas na GO-241 (Cavalcante). */
   const CHAVE = "novid:" + (location.pathname.split("/")[1] || "local");     // atlas e painel guardam separado
   const css = `
 .novid { position: fixed; right: 18px; bottom: 18px; z-index: 5050; width: min(380px, calc(100vw - 32px)); box-sizing: border-box;
