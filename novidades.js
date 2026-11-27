@@ -3,11 +3,12 @@
    é lembrado no navegador; o botão #novid-btn (se a página tiver) reabre. Some no modo apresentação e na impressão. */
 (() => {
   "use strict";
-  const NOVIDADES = { id: "2026-11-27c", data: "27/11/2026", itens: [
-    "<b>Projetos atualizados</b> com o cadastro de 27/11/2026: o site passa a mostrar 162 projetos (antes eram 151). Entraram 12 projetos: duplicação da <b>GO-164</b> (quatro trechos) e da <b>GO-174</b>, em Montividiu; pavimentação da <b>GO-188</b> (dois trechos), <b>GO-194</b>, <b>GO-239</b> e de um trecho em Niquelândia; terceira faixa da <b>GO-174</b>; e uma obra de arte especial (OAE) na <b>GO-050</b>, em Montividiu.",
+  const NOVIDADES = { id: "2026-11-27d", data: "27/11/2026", itens: [
+    "<b>1ª atualização – Obras</b> com o cadastro de 27/11/2026: o site passa a mostrar 87 obras (antes eram 71), em 96 municípios (antes eram 83).",
+    "Entraram 16 obras, todas concluídas ou inauguradas: pavimentação da <b>GO-050</b>, <b>GO-154</b>, <b>GO-219</b>, <b>GO-230</b>, <b>GO-306</b>, <b>GO-309</b> e <b>GO-460</b>; duplicação da <b>GO-139</b> e da <b>GO-174</b>; restauração da <b>GO-040</b>, <b>GO-050</b>, <b>GO-080</b>, <b>GO-184</b> e <b>GO-174</b> (dois trechos); e uma obra de arte especial (OAE) na <b>GO-174</b>, em Rio Verde. A obra de pavimentação da <b>GO-219</b> (OB26-01474) passou de Contratado para Concluído.",
+    "<b>2ª atualização – Projetos</b> com o cadastro de 27/11/2026: o site passa a mostrar 162 projetos (antes eram 151). Entraram 12 projetos: duplicação da <b>GO-164</b> (quatro trechos) e da <b>GO-174</b>, em Montividiu; pavimentação da <b>GO-188</b> (dois trechos), <b>GO-194</b>, <b>GO-239</b> e de um trecho em Niquelândia; terceira faixa da <b>GO-174</b>; e uma obra de arte especial (OAE) na <b>GO-050</b>, em Montividiu.",
     "Saiu do cadastro o projeto de restauração da <b>GO-309</b>. Dois projetos de duplicação da <b>GO-164</b> passaram para a situação Publicado, e três projetos da GO-164 e da GO-188 tiveram o trecho reduzido.",
     "15 projetos ligados a obras passam a aparecer na etapa <b>Obra integrada</b> (14 estavam como Estudo Técnico Preliminar e 1, na GO-040, como Obra).",
-    "As obras continuam iguais (87 obras, cadastro de 27/11/2026).",
   ] };
   /* 27/11/2026 (manhã): Obras atualizadas com o cadastro de 27/11/2026: 87 obras (antes 71), em 96 municípios (antes 83);
      entraram 16 obras concluídas ou inauguradas; a pavimentação da GO-219 (OB26-01474) passou de Contratado para Concluído. */
