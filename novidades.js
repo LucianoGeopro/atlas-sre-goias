@@ -3,11 +3,14 @@
    é lembrado no navegador; o botão #novid-btn (se a página tiver) reabre. Some no modo apresentação e na impressão. */
 (() => {
   "use strict";
-  const NOVIDADES = { id: "2026-11-26b", data: "26/11/2026", itens: [
-    "<b>Projetos atualizados</b> com o cadastro de 26/11/2026: o site passa a mostrar 151 projetos (antes eram 155).",
-    "Saíram do cadastro quatro projetos de pavimentação, todos na etapa Projeto: <b>GO-236 / GO-114</b>, do entroncamento da GO-116 ao perímetro urbano de Flores de Goiás (Flores de Goiás / São João d'Aliança); <b>GO-116</b>, do Km 22 ao entroncamento da GO-236 (Formosa / São João d'Aliança); <b>GO-236</b>, do entroncamento da GO-116 ao da GO-118 (São João d'Aliança); e <b>GO-116</b>, entre os dois entroncamentos com a GO-236 (São João d'Aliança).",
-    "Nenhum projeto novo e nenhuma mudança nos demais projetos. As obras continuam iguais.",
+  const NOVIDADES = { id: "2026-11-27", data: "27/11/2026", itens: [
+    "<b>Obras atualizadas</b> com o cadastro de 27/11/2026: o site passa a mostrar 87 obras (antes eram 71), em 96 municípios (antes eram 83).",
+    "Entraram 16 obras, todas concluídas ou inauguradas: pavimentação da <b>GO-050</b>, <b>GO-154</b>, <b>GO-219</b>, <b>GO-230</b>, <b>GO-306</b>, <b>GO-309</b> e <b>GO-460</b>; duplicação da <b>GO-139</b> e da <b>GO-174</b>; restauração da <b>GO-040</b>, <b>GO-050</b>, <b>GO-080</b>, <b>GO-184</b> e <b>GO-174</b> (dois trechos); e uma obra de arte especial (OAE) na <b>GO-174</b>, em Rio Verde.",
+    "A obra de pavimentação da <b>GO-219</b> (OB26-01474) passou de Contratado para Concluído.",
+    "<b>Projetos:</b> 15 projetos ligados a obras passam a aparecer na etapa <b>Obra integrada</b> (14 estavam como Estudo Técnico Preliminar e 1, na GO-040, como Obra).",
   ] };
+  /* 26/11/2026 (b): Projetos atualizados com o cadastro de 26/11/2026: 151 projetos (antes 155); saíram quatro projetos de
+     pavimentação na etapa Projeto (GO-236 / GO-114, GO-116, GO-236 e GO-116, em Flores de Goiás, Formosa e São João d'Aliança). */
   /* 25/11/2026: Obras e projetos atualizados com os cadastros de 25/11/2026. | Novos projetos: pavimentação em Aloândia, Hidrolândia,
      Bom Jesus de Goiás / Goiatuba e Trindade / Goiânia; ponte sobre o Rio dos Bois (Diorama) e duas interseções em desnível na GO-222
      (Nova Veneza). | Nova obra: pavimentação de estrada vicinal em Itaberaí. | Situação das obras atualizada conforme o cadastro
